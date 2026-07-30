@@ -1,0 +1,453 @@
+{% block content %}
+
+
+
+
+
+    <canvas id="matrix-bg"></canvas>
+
+    <div class="bg-overlay"></div>
+
+
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar h-full bg-[#03060a] border-r border-emerald-900/40 flex flex-col items-center py-6 fixed left-0 top-0 z-50">
+
+        <div class="w-10 h-10 bg-emerald-500/20 rounded-xl border border-emerald-500/50 flex items-center justify-center mb-10 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+
+        </div>
+
+
+
+        
+
+    </aside>
+
+
+
+    <!-- MAIN CONTENT -->
+
+    <main class="ml-[80px] flex-1 h-full overflow-y-auto p-8 z-10 relative">
+
+        
+
+        <header class="mb-10 flex justify-between items-end">
+
+            <div class="glitch-wrapper">
+
+                <h1 class="glitch-text mono" data-text="GLOBAL BATTLEGROUND">GLOBAL BATTLEGROUND</h1>
+
+                <p class="text-emerald-400/80 mono text-xs mt-2 uppercase tracking-[0.3em]">Hacker Ranking & Live CTF Matchmaking</p>
+
+            </div>
+
+            
+
+            <div class="flex items-center gap-4">
+
+                <div class="glass-panel px-4 py-2 flex items-center gap-3">
+
+                    <span class="text-xs text-slate-400">YOUR RANK:</span>
+
+                    <span class="text-emerald-400 font-black text-lg mono">#1,337</span>
+
+                </div>
+
+                <div class="glass-panel px-4 py-2 flex items-center gap-3">
+
+                    <span class="text-xs text-slate-400">RATING:</span>
+
+                    <span class="text-amber-400 font-bold mono">2450 ELO</span>
+
+                </div>
+
+            </div>
+
+        </header>
+
+
+
+        <div class="grid grid-cols-12 gap-8">
+
+            
+
+            <!-- LEFT COLUMN (Leaderboard & Matches) -->
+
+            <div class="col-span-8 flex flex-col gap-8">
+
+                
+
+                <!-- Matchmaking Card -->
+
+                <section class="glass-panel p-6 glow-green relative overflow-hidden group">
+
+                    <div class="absolute -right-10 -top-10 opacity-10 group-hover:opacity-20 transition-opacity">
+
+                        <svg class="w-64 h-64 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13h-13L12 6.5z"/></svg>
+
+                    </div>
+
+                    <div class="flex items-center justify-between z-10 relative">
+
+                        <div>
+
+                            <h2 class="text-2xl font-black text-white mb-2 flex items-center">
+
+                                <span class="text-emerald-400 mr-2 text-3xl">⚔️</span> 1V1 KING OF THE HILL
+
+                            </h2>
+
+                            <p class="text-slate-400 mb-6 text-xs w-3/4 leading-relaxed">Enter the arena. Face off against hackers of similar skill level in real-time machine exploitation. First to capture the root flag wins ELO rating and bounty shards.</p>
+
+                            
+
+                            <div class="flex gap-4">
+
+                                <button class="btn-neon font-bold py-3 px-8 rounded-lg mono text-sm flex items-center gap-2">
+
+                                    <span class="radar-box !w-4 !h-4 !border !bg-transparent !border-emerald-400 !border-solid !rounded-full relative inline-block overflow-hidden"><span class="absolute inset-0 bg-emerald-400/20 animate-ping"></span></span> FIND MATCH
+
+                                </button>
+
+                                <button onclick="document.getElementById('lobby-modal').classList.remove('hidden')" class="bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold py-3 px-6 rounded-lg mono text-sm border border-slate-700 transition">
+
+@login_required
+
+def practice():
+
+    return render_template('practice.html')
+
+
+
+@app.route('/compete')
+
+@login_required
+
+def compete():
+
+    return render_template('compete.html')
+
+
+
+@app.route('/api/lobby/create', methods=['POST'])
+
+@login_required
+
+def create_lobby():
+
+    data = request.json or {}
+
+    max_players = data.get('max_players', 2)
+
+    scenario = data.get('scenario', 'sqli_login')
+
+    host_team = data.get('host_team', 'blue')
+
+    custom_desc = data.get('custom_desc', '')
+
+    custom_flag = data.get('custom_flag', '')
+
+    
+
+    lobby_id = str(uuid.uuid4())[:8] # Short ID
+
+    red_invite_code = 'R-' + str(uuid.uuid4())[:6]
+
+    blue_invite_code = 'B-' + str(uuid.uuid4())[:6]
+
+    
+
+    conn = sqlite3.connect('users.db')
+
+    c = conn.cursor()
+
+    c.execute("INSERT INTO lobbies (id, host_username, max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+
+              (lobby_id, session['user'], max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag))
+
+              
+
+    c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
+
+              (lobby_id, session['user'], host_team))
+
+    conn.commit()
+
+    conn.close()
+
+    
+
+    # Initialize Game Engine State
+
+    active_games[lobby_id] = {
+
+        'scenario': scenario,
+
+        'custom_desc': custom_desc,
+
+        'custom_flag': custom_flag,
+
+        'health': 100,
+
+        'rules': [], # Active WAF Regex rules
+
+        return jsonify({"success": False, "error": "Invite code required"}), 400
+
+        
+
+    conn = sqlite3.connect('users.db')
+
+    c = conn.cursor()
+
+    
+
+    # Check if lobby exists with this invite code
+
+    c.execute("SELECT id, max_players, red_invite_code, blue_invite_code FROM lobbies WHERE red_invite_code = ? OR blue_invite_code = ?", (invite_code, invite_code))
+
+    lobby = c.fetchone()
+
+    if not lobby:
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+
+                <!-- Activity Feed -->
+
+                <section class="glass-panel p-6 flex-1 flex flex-col">
+
+                    <h3 class="text-sm font-bold text-slate-300 mb-4 uppercase tracking-widest mono border-b border-slate-800 pb-2">Live Pwn Feed</h3>
+
+                    
+
+                    <div class="flex-1 overflow-y-auto space-y-4 pr-2" id="feed-container">
+
+                        <!-- Filled by JS -->
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </div>
+
+    </main>
+
+
+
+    <!-- LOBBY MODAL -->
+
+    <div id="lobby-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+
+        <div class="glass-panel p-8 w-[600px] max-w-[90vw] relative">
+
+            <button onclick="document.getElementById('lobby-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-500 hover:text-white">✕</button>
+
+            <h2 class="text-2xl font-black text-emerald-400 mb-6 mono text-center">CREATE / JOIN LOBBY</h2>
+
+            
+
+            <div class="grid grid-cols-2 gap-8">
+
+                <!-- Create Lobby -->
+
+                <div class="bg-slate-900/50 p-6 rounded border border-slate-800 text-center flex flex-col justify-between">
+
+                    <div>
+
+                        <h3 class="text-white font-bold mb-4">Create New</h3>
+
+                        <div class="mb-4">
+
+                            <label class="block text-slate-400 text-sm mb-1">Target Scenario</label>
+
+                            <select id="create-scenario" onchange="document.getElementById('custom-ctf-fields').classList.toggle('hidden', this.value !== 'custom_ctf')" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm">
+
+                                <option value="sqli_login">SQL Injection (Login Bypass)</option>
+
+                                <option value="cmd_ping">Command Injection (Ping Utility)</option>
+
+                                <option value="xss_search">Cross-Site Scripting (Product Search)</option>
+
+                                <option value="lfi_traversal">Local File Inclusion (Document Downloader)</option>
+
+                                <option value="ssti_jinja">Server-Side Template Injection (Email Service)</option>
+
+                                <option value="omni_sandbox">Free-for-All Sandbox (All Vulnerabilities)</option>
+
+                                <option value="custom_ctf">Custom Target (Simulated)</option>
+
+                            </select>
+
+                        </div>
+
+                        <div id="custom-ctf-fields" class="hidden mb-4 text-left">
+
+                            <label class="block text-slate-400 text-sm mb-1">Target Name & Vulnerability Details</label>
+
+                            <textarea id="create-custom-desc" rows="3" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm mb-2" placeholder="E.g., Legacy FTP Server - Vulnerable to Path Traversal..."></textarea>
+
+                            <label class="block text-slate-400 text-sm mb-1">Exploit Payload Keyword</label>
+
+                            <input type="text" id="create-custom-flag" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm" placeholder="e.g. ../../etc/passwd">
+
+                        </div>
+
+                        <div class="mb-4">
+
+                            <label class="block text-slate-400 text-sm mb-1">Your Team (Host)</label>
+
+                            <select id="create-team" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm">
+
+                                <option value="blue">Blue Team (Defense)</option>
+
+                                <option value="red">Red Team (Offense)</option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                    <button onclick="createLobby()" class="btn-neon w-full py-2 rounded font-bold mono">HOST MATCH</button>
+
+                </div>
+
+                
+
+                <!-- Join Lobby -->
+
+                <div class="bg-slate-900/50 p-6 rounded border border-slate-800 text-center flex flex-col justify-between">
+
+                    <div>
+
+                        <h3 class="text-white font-bold mb-4">Join Existing</h3>
+
+                        <input type="text" id="join-invite-code" placeholder="Enter Invite Code" class="w-full bg-black border border-slate-700 text-white rounded p-2 mb-4 text-center mono uppercase tracking-widest">
+
+                        <p class="text-slate-400 text-xs text-left mb-4">The invite code determines whether you join as an attacker or defender.</p>
+
+                    </div>
+
+                    <button onclick="joinLobby()" class="w-full bg-emerald-900/30 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black py-2 rounded mono font-bold transition">JOIN MATCH</button>
+
+                </div>
+
+            </div>
+
+            <div id="lobby-error" class="text-red-400 text-center mt-4 text-sm mono hidden"></div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- WAITING ROOM (Initially Hidden) -->
+
+    <div id="waiting-room" class="hidden fixed inset-0 z-[90] bg-[#050a0f] p-8 overflow-y-auto">
+
+        <div class="max-w-6xl mx-auto">
+
+            <header class="flex justify-between items-center mb-12 border-b border-slate-800 pb-6">
+
+                <div class="glitch-wrapper">
+
+                    <h1 class="glitch-text mono text-4xl" data-text="LOBBY CONNECTION ESTABLISHED">LOBBY CONNECTION ESTABLISHED</h1>
+
+                    <div class="mt-4 flex gap-6 items-center">
+
+                        <p class="text-emerald-400 mono">LOBBY ID: <span id="display-lobby-id" class="text-white bg-slate-800 px-2 py-1 rounded"></span></p>
+
+                        <div class="h-6 w-px bg-slate-700"></div>
+
+                        <p class="text-red-400 mono text-sm font-bold tracking-widest">RED TEAM INVITE: <span id="display-red-code" class="text-white bg-red-900/50 border border-red-500/30 px-2 py-1 rounded select-all cursor-pointer hover:bg-red-800/80 transition"></span></p>
+
+                        <p class="text-blue-400 mono text-sm font-bold tracking-widest">BLUE TEAM INVITE: <span id="display-blue-code" class="text-white bg-blue-900/50 border border-blue-500/30 px-2 py-1 rounded select-all cursor-pointer hover:bg-blue-800/80 transition"></span></p>
+
+                    </div>
+
+                </div>
+
+                <button onclick="startMatch()" class="btn-neon text-lg py-3 px-12 rounded-lg font-black mono animate-pulse">DEPLOY</button>
+
+            </header>
+
+            
+
+            <div class="grid grid-cols-2 gap-12">
+
+                <!-- RED TEAM -->
+
+                <div class="glass-panel border-red-500/50 glow-red p-6">
+
+                    <h2 class="text-3xl font-black text-red-500 mb-2 flex items-center gap-3"><span class="mi mi-xl text-red-500">swords</span> RED TEAM <span class="text-sm font-normal text-slate-400">(OFFENSE)</span></h2>
+
+                    <p class="text-slate-400 text-sm mb-6 pb-4 border-b border-red-900/30">Objective: Exploit the target web application, extract flags, and disrupt services before time runs out.</p>
+
+                    <ul id="red-team-list" class="space-y-3 font-mono text-lg text-white">
+
+                        <!-- Filled by JS -->
+
+                    </ul>
+
+                </div>
+
+                
+
+                <!-- BLUE TEAM -->
+
+                <div class="glass-panel border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] p-6">
+
+                    <h2 class="text-3xl font-black text-blue-400 mb-2 flex items-center gap-3"><span class="mi mi-xl text-blue-400">shield</span> BLUE TEAM <span class="text-sm font-normal text-slate-400">(DEFENSE)</span></h2>
+
+                    <p class="text-slate-400 text-sm mb-6 pb-4 border-b border-blue-900/30">Objective: Monitor incoming traffic, write custom WAF rules, and patch vulnerabilities to block Red Team attacks.</p>
+
+                        <input type="text" id="join-invite-code" placeholder="Enter Invite Code" class="w-full bg-black border border-slate-700 text-white rounded p-2 mb-4 text-center mono uppercase tracking-widest">
+
+                        <p class="text-slate-400 text-xs text-left mb-4">The invite code determines whether you join as an attacker or defender.</p>
+
+                    </div>
+
+                    <button onclick="joinLobby()" class="w-full bg-emerald-900/30 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black py-2 rounded mono font-bold transition">JOIN MATCH</button>
+
+                </div>
+
+            </div>
+
+            <div id="lobby-error" class="text-red-400 text-center mt-4 text-sm mono hidden"></div>
+
+        </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- HOW TO PLAY MODAL -->
+
+    <div id="how-to-play-modal">
+
+        <div class="glass-panel p-8 w-[850px] max-w-[95vw] relative bg-[#050a0f] border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
+
+            <button onclick="document.getElementById('how-to-play-modal').classList.remove('show')" class="absolute top-4 right-4 text-slate-500 hover:text-white">✕</button>
+
+            <h2 class="text-2xl font-black text-indigo-400 mb-6 mono flex items-center gap-3 border-b border-indigo-900/50 pb-4"><span class="mi">map</span> HOW IT WORKS: OMNI-SANDBOX</h2>
+
+            
+
+            <!-- Red Team Map -->
+
+            <div class="mb-8">
+
+                <h3 class="text-red-500 font-bold mb-4 flex items-center gap-2"><span class="mi">swords</span> RED TEAM STRATEGY (ATTAC

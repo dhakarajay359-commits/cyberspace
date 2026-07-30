@@ -1,0 +1,7 @@
+Step 443:
+ document.getElementById('solo-demo-links');
+665:             if (demoDiv) {
+666:                 demoDiv.innerHTML = `
+667:                     <div class="bg-slate-900/80 border border-slate-700 rounded-xl p-6 mt-6 text-center">
+668:                         <p class="text-emerald-400 font-black text-sm uppercase tracking-widest mb-1">🎮 Solo Demo Mode — Two Tab Setup</p>
+669:                         <p class="text-slate-400 text-xs mb-5">Click a team button below. You will be asked to ente

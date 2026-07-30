@@ -1,0 +1,33 @@
+ = false;
+
+
+
+        // ─── AUTO-JOIN FROM URL PARAMS (Solo Demo Mode) ───
+
+        (async function autoJoinFromUrl() {
+
+            const params = new URLSearchParams(window.location.search);
+
+            const demoLobby = params.get('lobby');
+
+            const demoTeam = params.get('team');
+
+            if (!demoLobby || !demoTeam) return;
+
+
+
+            try {
+
+                // Step 1: Verify demo join
+
+                const joinRes = await fetch('/api/lobby/demo-join', {
+
+                    method: 'POST',
+
+                    headers: {'Content-Type': 'application/json'},
+
+                    body: JSON.stringify({ lobby_id: demoLobby, team: demoTeam })
+
+                });
+
+        

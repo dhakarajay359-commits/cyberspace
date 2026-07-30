@@ -1,0 +1,59 @@
+Created At: 2026-07-27T17:54:46Z
+Completed At: 2026-07-27T17:54:47Z
+File Path: `file:///c:/Users/ASUS/OneDrive/Desktop/reseach/cyberspace_dashboard/templates/compete.html`
+Total Lines: 1713
+Total Bytes: 110102
+Showing lines 610 to 660
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+610: 
+611:                     <!-- Right: Defense Arsenal -->
+612:                     <div class="w-1/2 flex flex-col overflow-y-auto p-3 space-y-2">
+613:                         <div class="text-[10px] text-slate-500 mono uppercase tracking-widest mb-1">Defense Arsenal</div>
+614:                         <!-- Dynamically filled by renderDefenseArsenal() -->
+615:                         <div id="defense-arsenal">
+616:                             <!-- filled by JS -->
+617:                         </div>
+618: 
+619:                         <!-- Custom Rule -->
+620:                         <div class="mt-auto pt-3 border-t border-slate-800">
+621:                             <p class="text-[10px] text-slate-500 mb-1 mono uppercase">Custom Regex Rule</p>
+622:                             <div class="flex gap-2">
+623:                                 <input type="text" id="blue-custom-rule" 
+624:                                     class="flex-1 bg-black border border-slate-700 p-2 rounded text-white mono text-xs outline-none focus:border-blue-500 transition" 
+625:                                     placeholder="e.g. .*UNION.*SELECT.*">
+626:                                 <button onclick="deployCustomRule()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded text-xs font-bold transition">DEPLOY</button>
+627:                             </div>
+628:                         </div>
+629:                     </div>
+630:                 </div>
+631:             </div>
+632:         </div>
+633:     </div>
+634: 
+635:     </div>
+636: 
+637:     <script>
+638:         let currentLobbyId = null;
+639:         let myTeam = null;
+640:         let isHost = false;
+641:         let lobbyPollInterval = null;
+642:         let gamePollInterval = null;
+643:         window.breachTriggered = false;
+644: 
+645:         // ─── AUTO-JOIN FROM URL PARAMS (Solo Demo Mode) ───
+646:         (async function autoJoinFromUrl() {
+647:             const params = new URLSearchParams(window.location.search);
+648:             const demoLobby = params.get('lobby');
+649:             const demoTeam = params.get('team');
+650:             if (!demoLobby || !demoTeam) return;
+651: 
+652:             try {
+653:                 // Step 1: Verify demo join
+654:                 const joinRes = await fetch('/api/lobby/demo-join', {
+655:                     method: 'POST',
+656:                     headers: {'Content-Type': 'application/json'},
+657:                     body: JSON.stringify({ lobby_id: demoLobby, team: demoTeam })
+658:                 });
+659:                 const joinData = await joinRes.json();
+660:                 if (!joinData.success) {
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

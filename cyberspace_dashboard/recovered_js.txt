@@ -1,0 +1,225 @@
+/* STEP 617 */
+        async function createLobby() {
+            const scenario = document.getElementById('create-scenario').value;
+            const hostTeam = document.getElementById('create-team').value;
+            try {
+                const res = await fetch('/api/lobby/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ max_players: 4, scenario: scenario, host_team: hostTeam })
+                });
+                
+                // If the user's session expired, the backend redirects to the login page (HTML)
+                if (res.redirected && res.url.includes('login')) {
+                    return showError('Session expired. Please refresh the page and log in again.');
+                }
+                
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    return showError('Server returned an invalid response. Please refresh the page.');
+                }
+                
+                const data = await res.json();
+                if (data.success) {
+                    currentLobbyId = data.lobby_id;
+                    myTeam = hostTeam; 
+                    isHost = true;
+                    showWaitingRoom(currentLobbyId, data.red_invite_code, data.blue_invite_code);
+                } else {
+                    showError(data.error);
+                }
+            } catch (err) { console.error(err); showError('Failed to create lobby. Check console.'); }
+        }
+/* STEP 1466 */
+        async function createLobby() {
+            const scenario = document.getElementById('create-scenario').value;
+            const team = document.getElementById('create-team').value;
+            const customDesc = document.getElementById('create-custom-desc').value;
+            const customFlag = document.getElementById('create-custom-flag').value;
+            
+            if (scenario === 'custom_ctf' && (!customDesc || !customFlag)) {
+                showError('Please provide both Challenge Description and Winning Flag.');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/lobby/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        scenario: scenario, 
+                        host_team: team, 
+                        max_players: 2,
+                        custom_desc: customDesc,
+                        custom_flag: customFlag
+                    })
+                });
+                const data = await res.json();
+/* STEP 1762 */
+            renderTargetPreview();
+            gamePollInterval = setInterval(pollGameState, 1000);
+            startMatchTimer();
+        }
+
+        let matchTimerInterval = null;
+        let matchTimeRemaining = 300; // 5 minutes in seconds
+
+        function startMatchTimer() {
+            if (matchTimerInterval) clearInterval(matchTimerInterval);
+            matchTimeRemaining = 300;
+            updateTimerDisplay();
+            
+            matchTimerInterval = setInterval(() => {
+                matchTimeRemaining--;
+                updateTimerDisplay();
+                
+                if (matchTimeRemaining <= 0) {
+                    clearInterval(matchTimerInterval);
+                    if (window.breachTriggered) return; // Red already won
+                    triggerBlueVictory();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(matchTimeRemaining / 60).toString().padStart(2, '0');
+            const s = (matchTimeRemaining % 60).toString().padStart(2, '0');
+            const display = document.getElementById('match-timer-display');
+            if (display) {
+                display.textContent = `${m}:${s}`;
+                if (matchTimeRemaining <= 30) {
+                    display.classList.add('animate-pulse', 'text-red-500');
+                    display.classList.remove('text-amber-400');
+                }
+            }
+        }
+/* STEP 1773 */
+        function closeVictory() {
+            document.getElementById('red-victory-overlay').classList.remove('show');
+        }
+
+        function triggerBlueVictory() {
+            document.getElementById('blue-victory-overlay').classList.add('show');
+        }
+        function closeBlueVictory() {
+            document.getElementById('blue-victory-overlay').classList.remove('show');
+        }
+
+        function showHowToPlayModal() {
+            const container = document.getElementById('dynamic-map-content');
+            let content = '';
+            
+            if (window.currentScenario === 'custom_ctf') {
+                content = `
+                    <div class="mb-8">
+                        <h3 class="text-red-500 font-bold mb-4 flex items-center gap-2"><span class="mi">swords</span> RED TEAM STRATEGY (ATTACK)</h3>
+                        <div class="flex items-center justify-between mono text-xs">
+                            <div class="map-node border-red-900/50 text-red-400 w-1/4">
+                                <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                                Injects custom keyword<br>e.g. 'hack_me_123'
+                            </div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-travel"></div></div>
+                            <div class="map-node border-blue-900/50 text-blue-400 w-1/4 opacity-50">
+                                <div class="font-bold text-sm mb-1 text-white">2. WAF</div>
+                                No Rule Matches
+                            </div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-travel" style="animation-delay: 1s"></div></div>
+                            <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4 glow-red">
+                                <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                                Exploit Keyword Found!<br><span class="text-red-500 font-black text-sm">RED WINS</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-blue-400 font-bold mb-4 flex items-center gap-2"><span class="mi">shield</span> BLUE TEAM STRATEGY (DEFENSE)</h3>
+                        <div class="flex items-center justify-between mono text-xs">
+                            <div class="map-node border-red-900/50 text-red-400 w-1/4 opacity-50"><div class="font-bold text-sm mb-1 text-white">1. Attacker</div>Injects custom keyword</div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-block"></div></div>
+                            <div class="map-node border-blue-500 glow-blue text-blue-400 w-1/4 relative">
+                                <div class="font-bold text-sm mb-1 text-white">2. WAF Defense</div>
+                                Rule Blocks Keyword!<br>Payload Blocked
+                                <div class="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-lg animate-ping">✕</div>
+                            </div>
+                            <div class="map-line opacity-20"></div>
+                            <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4"><div class="font-bold text-sm mb-1 text-white">3. Target Server</div>Safe.<br><span class="text-blue-400 font-black text-sm">BLUE DEFENDS</span></div>
+                        </div>
+                    </div>
+                    <div class="mt-8 text-slate-400 text-sm border-t border-slate-800 pt-4"><strong class="text-indigo-400">Sandbox Rules:</strong> In a Custom Scenario, the Red Team must use the specific Exploit Keyword chosen by the Host. The Blue Team must write a regex to block that specific keyword.</div>
+                `;
+            } else {
+                content = `
+                    <div class="mb-8">
+                        <h3 class="text-red-500 font-bold mb-4 flex items-center gap-2"><span class="mi">swords</span> RED TEAM STRATEGY (ATTACK)</h3>
+                        <div class="flex items-center justify-between mono text-xs">
+                            <div class="map-node border-red-900/50 text-red-400 w-1/4">
+                                <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                                Injects Payload<br>e.g. ' OR 1=1
+                            </div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-travel"></div></div>
+                            <div class="map-node border-blue-900/50 text-blue-400 w-1/4 opacity-50">
+                                <div class="font-bold text-sm mb-1 text-white">2. WAF</div>
+                                No Rule Matches
+                            </div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-travel" style="animation-delay: 1s"></div></div>
+                            <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4 glow-red">
+                                <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                                Vulnerability Triggered!<br><span class="text-red-500 font-black text-sm">RED WINS</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-blue-400 font-bold mb-4 flex items-center gap-2"><span class="mi">shield</span> BLUE TEAM STRATEGY (DEFENSE)</h3>
+                        <div class="flex items-center justify-between mono text-xs">
+                            <div class="map-node border-red-900/50 text-red-400 w-1/4 opacity-50"><div class="font-bold text-sm mb-1 text-white">1. Attacker</div>Injects Payload</div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-block"></div></div>
+                            <div class="map-node border-blue-500 glow-blue text-blue-400 w-1/4 relative">
+                                <div class="font-bold text-sm mb-1 text-white">2. WAF Defense</div>
+                                Regex Rule Matches!<br>Payload Blocked
+                                <div class="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-lg animate-ping">✕</div>
+                            </div>
+                            <div class="map-line opacity-20"></div>
+                            <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4"><div class="font-bold text-sm mb-1 text-white">3. Target Server</div>Safe.<br><span class="text-blue-400 font-black text-sm">BLUE DEFENDS</span></div>
+                        </div>
+                    </div>
+                    <div class="mt-8 text-slate-400 text-sm border-t border-slate-800 pt-4"><strong class="text-indigo-400">Sandbox Rules:</strong> The Omni-Sandbox target is vulnerable to EVERYTHING (SQLi, XSS, CMD Injection, LFI, SSTI). The Red Team can use any vector, and the Blue Team must write rules to block all of them simultaneously.</div>
+                `;
+            }
+            container.innerHTML = content;
+            document.getElementById('how-to-play-modal').classList.add('show');
+        }
+    </script>
+/* STEP 1818 */
+        function deployCustomRule() {
+            const input = document.getElementById('blue-custom-rule');
+            const rule = input.value.trim();
+            if (!rule) return;
+            input.value = '';
+            deployDefense(rule);
+        }
+
+        function decodeTraffic() {
+            const input = document.getElementById('blue-decoder-input').value.trim();
+            const output = document.getElementById('blue-decoder-output');
+            if (!input) {
+                output.textContent = '';
+                return;
+            }
+            try {
+                let b64 = input;
+                // If they copy-pasted the whole line, extract just the b64 part
+                if (b64.includes('?q=')) {
+                    b64 = b64.split('?q=')[1];
+                    if (b64.includes(' ')) b64 = b64.split(' ')[0];
+                }
+                const decoded = atob(b64);
+                output.textContent = decoded;
+                output.classList.remove('text-red-400');
+                output.classList.add('text-emerald-400');
+            } catch (e) {
+                output.textContent = 'ERROR: Invalid Base64 String';
+                output.classList.remove('text-emerald-400');
+                output.classList.add('text-red-400');
+            }
+        }
+        
+        function renderTargetPreview() {

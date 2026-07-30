@@ -1,0 +1,41 @@
+        /* ─── BATTLE MAP ANIMATIONS ─── */
+        #how-to-play-modal {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.9);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #how-to-play-modal.show { opacity: 1; pointer-events: all; }
+        
+        .map-node {
+            background: #1e293b; border: 2px solid #334155; border-radius: 8px;
+            padding: 16px; text-align: center; position: relative; z-index: 2;
+        }
+        .map-line {
+            height: 4px; background: #334155; position: relative;
+            flex-grow: 1; margin: 0 10px; z-index: 1;
+        }
+        
+        .payload-dot {
+            width: 12px; height: 12px; border-radius: 50%;
+            position: absolute; top: -4px; left: 0;
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        @keyframes payload-travel {
+            0% { left: 0; opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+        @keyframes payload-blocked {
+            0% { left: 0; opacity: 1; transform: scale(1); }
+            45% { left: 50%; opacity: 1; transform: scale(1); }
+            50% { left: 50%; opacity: 0; transform: scale(2); }
+            100% { left: 50%; opacity: 0; }
+        }
+        
+        .animate-travel { animation: payload-travel 2s infinite linear; }
+        .animate-block { animation: payload-blocked 2s infinite linear; }
+
+        /* ─── ATTACK / DEFENSE PANEL STYLES ─── */

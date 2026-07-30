@@ -1,0 +1,12 @@
+                                <option value="lfi_traversal">Local File Inclusion (Document Downloader)</option>
+                                <option value="ssti_jinja">Server-Side Template Injection (Email Service)</option>
+                                <option value="custom_ctf">Custom CTF Challenge</option>
+                            </select>
+                        </div>
+                        <div id="custom-ctf-fields" class="hidden mb-4 text-left">
+                            <label class="block text-slate-400 text-sm mb-1">Challenge Description</label>
+                            <textarea id="create-custom-desc" rows="3" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm mb-2" placeholder="E.g., Find the open port..."></textarea>
+                            <label class="block text-slate-400 text-sm mb-1">Winning Flag / Payload</label>
+                            <input type="text" id="create-custom-flag" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm" placeholder="e.g. 8080 or flag{...}">
+                        </div>
+                        <div class="mb-4">

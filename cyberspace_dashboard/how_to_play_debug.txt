@@ -1,0 +1,11 @@
+ald-500/50 hover:bg-emerald-500 hover:text-black py-2 rounded mono font-bold transition">JOIN MATCH</button>
+                </div>
+            </div>
+            <div id="lobby-error" class="text-red-400 text-center mt-4 text-sm mono hidden"></div>
+        </div>
+        </div>
+    </div>
+    <!-- HOW TO PLAY MODAL -->
+    <div id="how-to-play-modal">
+        <div class="glass-panel p-8 w-[850px] max-w-[95vw] relative bg-[#050a0f] border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
+            <button onclick="document.getElementById('how-to-play-modal').classList.remove('show')" cl

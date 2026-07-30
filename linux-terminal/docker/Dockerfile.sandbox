@@ -1,0 +1,99 @@
+# Ubuntu 22.04 sandbox image with a full hacking/dev toolkit
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+ENV TERM=xterm-256color
+
+# ── System packages ───────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Shells & basics
+    bash bash-completion sudo curl wget vim nano less man-db file \
+    # Core build tools
+    git build-essential gcc g++ gdb clang make cmake pkg-config \
+    # Python
+    python3 python3-pip python3-venv python3-dev \
+    # Node.js (LTS via NodeSource)
+    nodejs npm \
+    # Java
+    default-jdk \
+    # Ruby
+    ruby ruby-dev \
+    # PHP
+    php php-cli \
+    # Perl
+    perl \
+    # Go
+    golang-go \
+    # Filesystem & archive tools
+    tree zip unzip tar gzip bzip2 xz-utils p7zip-full \
+    # Network tools
+    iputils-ping net-tools iproute2 dnsutils netcat-openbsd \
+    nmap traceroute iftop tcpdump arp-scan \
+    # Security tools
+    openssl gnupg ca-certificates \
+    # Database CLI
+    sqlite3 mysql-client \
+    # Misc useful
+    jq htop procps lsof strace hexdump xxd tmux screen \
+    locales \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Install Rust via rustup ────────────────────────────────────────
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# ── Node.js global tools ─────────────────────────────────────────────
+RUN npm install -g npx yarn typescript ts-node
+
+# ── Python global tools ─────────────────────────────────────────────
+RUN pip3 install --no-cache-dir \
+    requests httpx beautifulsoup4 scapy pwntools \
+    black flake8 pytest ipython
+
+# ── Locale ──────────────────────────────────────────────────────────
+RUN locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# ── Create non-root user ─────────────────────────────────────────────
+RUN useradd -m -s /bin/bash -u 1000 user && \
+    echo "user:user" | chpasswd && \
+    usermod -aG sudo user && \
+    echo "user ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt, /usr/bin/pip3, /usr/bin/npm" >> /etc/sudoers
+
+# ── Set up Rust for the user ─────────────────────────────────────────
+RUN mkdir -p /home/user/.cargo /home/user/.rustup && \
+    cp -r /root/.cargo /home/user/ && \
+    cp -r /root/.rustup /home/user/ && \
+    chown -R user:user /home/user/.cargo /home/user/.rustup
+
+# ── Bash customization ────────────────────────────────────────────────
+RUN echo 'export PS1="\[\e[38;5;82m\]user\[\e[0m\]@\[\e[38;5;141m\]kali\[\e[0m\]:\[\e[38;5;81m\]\w\[\e[0m\]\$ "' >> /home/user/.bashrc && \
+    echo 'export PATH="$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/go/bin:$PATH"' >> /home/user/.bashrc && \
+    echo 'export TERM=xterm-256color' >> /home/user/.bashrc && \
+    echo 'alias ll="ls -la --color=auto"' >> /home/user/.bashrc && \
+    echo 'alias la="ls -A --color=auto"' >> /home/user/.bashrc && \
+    echo 'alias grep="grep --color=auto"' >> /home/user/.bashrc && \
+    echo '[ -f /etc/bash_completion ] && source /etc/bash_completion' >> /home/user/.bashrc
+
+# ── Create workspace ─────────────────────────────────────────────────
+RUN mkdir -p /home/user/workspace && chown -R user:user /home/user
+
+# ── Welcome message ──────────────────────────────────────────────────
+RUN echo 'echo ""' >> /home/user/.bashrc && \
+    echo 'echo "  ██╗  ██╗ █████╗ ██╗     ██╗    ██╗     ██╗███╗   ██╗██╗   ██╗██╗  ██╗"' >> /home/user/.bashrc && \
+    echo 'echo "  ██║ ██╔╝██╔══██╗██║     ██║    ██║     ██║████╗  ██║██║   ██║╚██╗██╔╝"' >> /home/user/.bashrc && \
+    echo 'echo "  █████╔╝ ███████║██║     ██║    ██║     ██║██╔██╗ ██║██║   ██║ ╚███╔╝ "' >> /home/user/.bashrc && \
+    echo 'echo "  ██╔═██╗ ██╔══██║██║     ██║    ██║     ██║██║╚██╗██║██║   ██║ ██╔██╗ "' >> /home/user/.bashrc && \
+    echo 'echo "  ██║  ██╗██║  ██║███████╗██║    ███████╗██║██║ ╚████║╚██████╔╝██╔╝ ██╗"' >> /home/user/.bashrc && \
+    echo 'echo "  ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝    ╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝"' >> /home/user/.bashrc && \
+    echo 'echo ""' >> /home/user/.bashrc && \
+    echo 'echo "  🐉 Kali-style Linux Terminal  |  Isolated sandbox  |  $(uname -r)"' >> /home/user/.bashrc && \
+    echo 'echo ""' >> /home/user/.bashrc
+
+USER user
+WORKDIR /home/user
+
+CMD ["/bin/bash", "--login"]

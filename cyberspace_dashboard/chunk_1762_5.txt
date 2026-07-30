@@ -1,0 +1,6 @@
+                    if (data.status === 'blue_wins' && !window.breachTriggered) {
+                        window.breachTriggered = true;
+                        clearInterval(gamePollInterval);
+                        triggerBlueVictory();
+                    }
+                }

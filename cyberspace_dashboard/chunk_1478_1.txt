@@ -1,0 +1,4 @@
+                    if (data.red_invite_code) document.getElementById('display-red-code').textContent = data.red_invite_code;
+                    if (data.blue_invite_code) document.getElementById('display-blue-code').textContent = data.blue_invite_code;
+                    if (data.scenario) window.currentScenario = data.scenario;
+                    if (data.custom_desc) window.customDesc = data.custom_desc;

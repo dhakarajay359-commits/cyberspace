@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Terminal | Cyberspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    <script>
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) return;
+            originalWarn.apply(console, args);
+        };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background-color: #000; 
+            margin: 0; 
+            padding: 0; 
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'JetBrains Mono', monospace; 
+            color: #39d353;
+        }
+        
+        .terminal-scroll {
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .terminal-scroll::-webkit-scrollbar { width: 8px; }
+        .terminal-scroll::-webkit-scrollbar-track { background: #000; }
+        .terminal-scroll::-webkit-scrollbar-thumb { background: #1a2e1a; border-radius: 4px; }
+        
+        .term-input { 
+            background: transparent; 
+            border: none; 
+            color: #fff; 
+            font-family: inherit; 
+            font-size: 14px; 
+            outline: none; 
+            flex: 1; 
+            width: 100%;
+        }
+        
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        .cursor { display: inline-block; width: 8px; height: 16px; background: #39d353; animation: blink 1s infinite; vertical-align: middle; margin-left: 2px; }
+        
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        
+        .glow { text-shadow: 0 0 10px rgba(57,211,83,0.6); }
+
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top nav -->
+    <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-50 pointer-events-none">
+        <div class="text-emerald-500 font-bold tracking-widest text-xs opacity-50 floating">[ SYSTEM ZERO-G MODE ]</div>
+        <a href="/academy" class="text-gray-500 hover:text-white text-xs border border-gray-800 hover:border-gray-500 rounded px-3 py-1 transition-all pointer-events-auto">← Back to Academy</a>
+    </div>
+
+    <!-- Terminal Area -->
+    <div class="terminal-scroll pt-16" id="terminal-panel" onclick="document.getElementById('term-input').focus()">
+        
+        <div class="mb-6 opacity-70">
+            <pre class="text-emerald-600 text-xs">
+    ___       __  _                 _ __       
+   /   | ____/ /_(_)____ __________ __(_) /___  __
+  / /| |/ __ \ __/ / __ `/ ___/ __ `/ / __/ / / /
+ / ___ / / / / /_/ / /_/ / /  / /_/ / / /_/ /_/ / 
+/_/  |_\/_/ \__/_/\__, /_/   \__,_/_/\__/\__, /  
+                 /____/                 /____/   
+            </pre>
+            <div class="mt-2 text-emerald-400">Welcome to the Antigravity Terminal. Laws of physics are disabled.</div>
+            <div class="text-gray-500 text-xs mt-1">AI Physics Engine: Gemini 2.5 Flash</div>
+        </div>
+        
+        <div id="term-output"></div>
+        
+        <div class="flex items-start mt-2">
+            <span class="text-emerald-400 mr-2 select-none glow whitespace-nowrap">user@antigravity:~#</span>
+            <input type="text" id="term-input" class="term-input" autocomplete="off" spellcheck="false" autofocus>
+        </div>
+        <div class="h-20"></div> <!-- padding bottom -->
+    </div>
+
+    <script>
+        const input = document.getElementById('term-input');
+        const output = document.getElementById('term-output');
+        const panel = document.getElementById('terminal-panel');
+        
+        input.addEventListener('keypress', async function(e) {
+            if (e.key !== 'Enter') return;
+            const raw = this.value.trim();
+            if (!raw) return;
+            
+            // Echo command
+            output.innerHTML += `<div class="mb-2"><span class="text-emerald-400 mr-2 select-none glow">user@antigravity:~#</span><span class="text-white">${raw.replace(/</g,'&lt;')}</span></div>`;
+            this.value = '';
+            panel.scrollTop = panel.scrollHeight;
+
+            if (raw === 'clear') {
+                output.innerHTML = '';
+                return;
+            }
+
+            const loadingId = 'loading-' + Date.now();
+            output.innerHTML += `<div id="${loadingId}" class="text-emerald-400 text-xs mb-4 font-bold">Executing zero-g physics engine... <span class="pulse-dot">◆</span></div>`;
+            panel.scrollTop = panel.scrollHeight;
+            
+            try {
+                const response = await fetch('/api/antigravity-terminal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: raw })
+                });
+                const data = await response.json();
+                
+                document.getElementById(loadingId).remove();
+                
+                let displayText = data.output;
+                if (displayText.startsWith('```')) {
+                    displayText = displayText.replace(/^```[a-z]*\n/, '').replace(/\n```$/, '');
+                }
+                
+                output.innerHTML += `<div class="mb-6 text-[14px] leading-relaxed whitespace-pre-wrap">${displayText.replace(/</g,'&lt;')}</div>`;
+            } catch (err) {
+                document.getElementById(loadingId).remove();
+                output.innerHTML += `<div class="text-red-500 mb-6">[ERROR] Neural connection to antigravity engine failed.</div>`;
+            }
+            
+            panel.scrollTop = panel.scrollHeight;
+        });
+
+        // Ensure focus
+        document.addEventListener('click', () => {
+            const selection = window.getSelection().toString();
+            if (!selection) {
+                input.focus();
+            }
+        });
+    </script>
+</body>
+</html>

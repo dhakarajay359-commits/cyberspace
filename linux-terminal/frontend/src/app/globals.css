@@ -1,0 +1,219 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Global reset & base ──────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbars ────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* ─── XTerm.js overrides ────────────────────────────────────────────── */
+.xterm {
+  height: 100%;
+  width: 100%;
+}
+
+.xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.xterm-screen {
+  height: 100% !important;
+}
+
+/* Glassmorphism panel */
+.glass-panel {
+  background: rgba(22, 27, 34, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Terminal container */
+.terminal-container {
+  background: rgba(13, 17, 23, 0.95);
+  border: 1px solid #21262d;
+}
+
+/* Tab button */
+.tab-btn {
+  transition: all 0.15s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn.active {
+  background: rgba(13, 17, 23, 0.9);
+  border-bottom-color: #a371f7;
+  color: #c9d1d9;
+}
+
+.tab-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.04);
+  color: #8b949e;
+}
+
+/* File explorer */
+.file-item {
+  transition: background 0.1s;
+}
+
+.file-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.file-item.selected {
+  background: rgba(163, 113, 247, 0.15);
+  color: #a371f7;
+}
+
+/* Glow effects */
+.glow-green {
+  text-shadow: 0 0 8px rgba(57, 211, 83, 0.6);
+}
+
+.glow-purple {
+  text-shadow: 0 0 8px rgba(163, 113, 247, 0.6);
+}
+
+.glow-cyan {
+  text-shadow: 0 0 8px rgba(86, 209, 240, 0.5);
+}
+
+/* Status indicator dot */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.connected {
+  background: #39d353;
+  box-shadow: 0 0 6px rgba(57, 211, 83, 0.7);
+}
+
+.status-dot.disconnected {
+  background: #f85149;
+  box-shadow: 0 0 6px rgba(248, 81, 73, 0.7);
+}
+
+.status-dot.connecting {
+  background: #e3b341;
+  box-shadow: 0 0 6px rgba(227, 179, 65, 0.7);
+  animation: blink 0.8s step-end infinite;
+}
+
+/* Topbar traffic lights style close button */
+.traffic-red { background: #f85149; }
+.traffic-yellow { background: #e3b341; }
+.traffic-green { background: #39d353; }
+
+/* Animations */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-10px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.2s ease-out;
+}
+
+/* Resize handle */
+.resize-handle {
+  cursor: col-resize;
+  transition: background 0.15s;
+}
+
+.resize-handle:hover {
+  background: rgba(163, 113, 247, 0.4) !important;
+}
+
+/* Drop zone highlight */
+.drop-zone-active {
+  border: 2px dashed #a371f7 !important;
+  background: rgba(163, 113, 247, 0.08) !important;
+}
+
+/* Context menu */
+.context-menu {
+  background: #1c2128;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  animation: fadeIn 0.1s ease-out;
+}
+
+.context-menu-item {
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: rgba(163, 113, 247, 0.12);
+}
+
+/* Tooltip */
+.tooltip {
+  pointer-events: none;
+  animation: fadeIn 0.15s ease;
+}
+
+/* Loading skeleton */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #161b22 25%, #1c2128 50%, #161b22 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}

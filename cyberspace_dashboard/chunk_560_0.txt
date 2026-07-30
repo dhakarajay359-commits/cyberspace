@@ -1,0 +1,1 @@
+                    { label: 'Basic Script Tag',        payload: '<script>alert(1)<\\/script>',          tip: 'Classic XSS alert box injection' },

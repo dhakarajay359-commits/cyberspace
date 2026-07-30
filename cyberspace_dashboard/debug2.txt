@@ -1,0 +1,147 @@
+(async function autoJoinFromUrl() {
+
+            const params = new URLSearchParams(window.location.search);
+
+            const demoLobby = params.get('lobby');
+
+            const demoTeam = params.get('team');
+
+            if (!demoLobby || !demoTeam) return;
+
+
+
+            try {
+
+                // Step 1: Verify demo join
+
+                const joinRes = await fetch('/api/lobby/demo-join', {
+
+                    method: 'POST',
+
+                    headers: {'Content-Type': 'application/json'},
+
+                    body: JSON.stringify({ lobby_id: demoLobby, team: demoTeam })
+
+                });
+
+                const joinData = await joinRes.json();
+
+                if (!joinData.success) {
+
+                    console.warn('Demo join failed:', joinData.error);
+
+                    return;
+
+                }
+
+
+
+                currentLobbyId = demoLobby;
+
+                myTeam = demoTeam;
+
+                isHost = false;
+
+
+
+                // Step 2: Auto-start the game (so status becomes 'active')
+
+                await fetch('/api/lobby/start', {
+
+                    method: 'POST',
+
+                    headers: {'Content-Type': 'application/json'},
+
+                    body: JSON.stringify({ lobby_id: demoLobby })
+
+                });
+
+
+
+                // Step 3: Fetch lobby status to get the scenario
+
+                const statusRes = await fetch(`/api/lobby/status/${demoLobby}`);
+
+                const statusData = await statusRes.json();
+
+                if (statusData.scenario) window.currentScenario = statusData.scenario;
+
+                if (statusData.custom_desc) window.customDesc = statusData.custom_desc;
+
+
+
+        function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
+
+            document.getElementById('lobby-modal').classList.add('hidden');
+
+            document.getElementById('waiting-room').classList.remove('hidden');
+
+            document.getElementById('display-lobby-id').textContent = lobbyId;
+
+            
+
+            if (redCode) document.getElementById('display-red-code').textContent = redCode;
+
+            if (blueCode) document.getElementById('display-blue-code').textContent = blueCode;
+
+
+
+            // Store codes for verification
+
+            window._redCode = redCode;
+
+            window._blueCode = blueCode;
+
+            window._demoLobbyId = lobbyId;
+
+
+
+            const base = window.location.origin + window.location.pathname;
+
+
+
+            const demoDiv = document.getElementById('solo-demo-links');
+
+            if (demoDiv) {
+
+                demoDiv.innerHTML = `
+
+                await fetch('/api/lobby/start', {
+
+                    method: 'POST',
+
+                    headers: {'Content-Type': 'application/json'},
+
+                    body: JSON.stringify({ lobby_id: demoLobby })
+
+                });
+
+
+
+                // Step 3: Fetch lobby status to get the scenario
+
+                const statusRes = await fetch(`/api/lobby/status/${demoLobby}`);
+
+                const statusData = await statusRes.json();
+
+                if (statusData.scenario) window.currentScenario = statusData.scenario;
+
+                if (statusData.custom_desc) window.customDesc = statusData.custom_desc;
+
+
+
+                // Step 4: Load the game UI
+
+                document.getElementById('lobby-modal').classList.add('hidden');
+
+                await startMatch();
+
+
+
+            } catch(e) {
+
+                console.error('Demo auto-join error', e);
+
+            }
+
+        })();

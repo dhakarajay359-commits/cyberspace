@@ -1,0 +1,1225 @@
+{% set active_page = "crypto" %}
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+    .crypto-container {
+        display: flex;
+        gap: 24px;
+        height: calc(100vh - 40px);
+        padding: 24px;
+    }
+
+    /* Left Sidebar: Cipher Selection */
+    .cipher-menu {
+        flex: 0 0 280px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+        overflow-y: auto;
+    }
+    
+    .cipher-menu h3 {
+        color: var(--text-main);
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 12px;
+    }
+
+    .cipher-btn {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        padding: 12px 14px;
+        border-radius: 12px;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.95rem;
+    }
+
+    .cipher-btn:hover {
+        background: rgba(255,255,255,0.02);
+        border-color: rgba(255,255,255,0.1);
+        color: var(--text-main);
+    }
+
+    .cipher-btn.active {
+        background: rgba(163, 113, 247, 0.1);
+        border-color: var(--accent-main);
+        color: var(--text-main);
+        box-shadow: 0 0 12px rgba(163, 113, 247, 0.2);
+    }
+    
+    .cipher-btn.hybrid {
+        border-color: #39d353;
+        color: #39d353;
+        margin-top: 10px;
+        background: rgba(57, 211, 83, 0.05);
+    }
+    .cipher-btn.hybrid.active {
+        background: rgba(57, 211, 83, 0.2);
+        box-shadow: 0 0 12px rgba(57, 211, 83, 0.2);
+        color: #fff;
+    }
+
+    .cipher-icon { font-size: 1.2rem; width: 24px; text-align: center; }
+
+    /* Main Area: Input/Output */
+    .cipher-workspace {
+        flex: 1;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+        overflow-y: auto;
+    }
+
+    .workspace-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 16px;
+    }
+
+    .workspace-header h2 {
+        font-size: 1.5rem;
+        color: var(--text-main);
+        font-weight: 600;
+        margin: 0 0 8px 0;
+    }
+
+    .workspace-desc {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        line-height: 1.5;
+        max-width: 80%;
+    }
+    
+    .header-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 12px;
+    }
+
+    .btn-code {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-family: 'JetBrains Mono', monospace;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    .btn-code:hover {
+        background: rgba(255,255,255,0.1);
+        border-color: rgba(255,255,255,0.2);
+    }
+
+    .io-section { display: flex; flex-direction: column; gap: 8px; }
+    .io-label { font-size: 0.9rem; color: var(--text-main); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    textarea {
+        width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color);
+        color: var(--text-main); border-radius: 12px; padding: 16px; min-height: 120px;
+        font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; resize: vertical;
+        transition: border-color 0.2s;
+    }
+    textarea:focus { outline: none; border-color: var(--accent-main); box-shadow: 0 0 0 2px rgba(163, 113, 247, 0.2); }
+
+    .settings-row {
+        display: flex; gap: 20px; align-items: center; background: rgba(255,255,255,0.02);
+        padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); flex-wrap: wrap;
+    }
+    .settings-row input, .settings-row select {
+        background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-main);
+        padding: 8px 12px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; width: 180px;
+    }
+    .settings-row input:focus, .settings-row select:focus { outline: none; border-color: var(--accent-main); }
+
+    .action-row { display: flex; gap: 16px; margin-top: 10px; }
+    .btn-run {
+        flex: 1; padding: 16px; border-radius: 12px; border: none; font-size: 1.05rem;
+        font-weight: 600; cursor: pointer; transition: all 0.2s; text-transform: uppercase;
+        letter-spacing: 0.05em; display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-encrypt { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+    .btn-encrypt:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+    .btn-decrypt { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); }
+    .btn-decrypt:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4); }
+    
+    .btn-step { background: linear-gradient(135deg, #a371f7, #7c3aed); color: white; box-shadow: 0 4px 15px rgba(163, 113, 247, 0.3); }
+    .btn-step:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(163, 113, 247, 0.4); }
+    
+    .btn-reset { background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-color); flex: 0 0 120px; }
+    .btn-reset:hover { background: rgba(255,255,255,0.1); }
+    
+    .error-msg { color: #ef4444; font-size: 0.9rem; margin-top: -10px; display: none; width: 100%; }
+
+    /* Code Modal */
+    #code-modal {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
+    }
+    .modal-content {
+        background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+        width: 800px; max-width: 90vw; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px 24px; border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.02);
+    }
+    .lang-tabs { display: flex; gap: 16px; }
+    .lang-tab {
+        color: var(--text-muted); cursor: pointer; padding: 4px 0; font-weight: 500;
+        border-bottom: 2px solid transparent; transition: all 0.2s;
+    }
+    .lang-tab:hover { color: var(--text-main); }
+    .lang-tab.active { color: var(--accent-main); border-bottom-color: var(--accent-main); }
+    .modal-close { cursor: pointer; font-size: 1.5rem; color: var(--text-muted); line-height: 1; }
+    .modal-close:hover { color: white; }
+    
+    .code-body { padding: 24px; background: #0d1117; max-height: 60vh; overflow-y: auto; }
+    pre { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #c9d1d9; white-space: pre-wrap; }
+    
+    /* Hybrid UI Elements */
+    .hybrid-step { display: flex; flex-direction: column; gap: 8px; flex: 1; border-right: 1px solid var(--border-color); padding-right: 20px; }
+    .hybrid-step:last-child { border-right: none; padding-right: 0; }
+    
+    /* Flowchart Pipeline styling */
+    .flowchart-step {
+        background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-bottom: 8px;
+        border-left: 3px solid var(--border-color); transition: all 0.3s;
+        display: flex; flex-direction: column; gap: 8px;
+    }
+    .flowchart-step.active-step {
+        border-left: 4px solid var(--accent-main);
+        background: rgba(163, 113, 247, 0.1);
+        box-shadow: 0 0 10px rgba(163, 113, 247, 0.15);
+    }
+    
+    .toggle-container {
+        display: flex; gap: 10px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 8px; margin-bottom: 16px;
+    }
+    .toggle-btn {
+        flex: 1; padding: 8px; text-align: center; cursor: pointer; border-radius: 6px; font-size: 0.9rem;
+        color: var(--text-muted); transition: all 0.2s;
+    }
+    .toggle-btn.active {
+        background: var(--accent-main); color: white; font-weight: bold;
+    }
+    
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="crypto-container">
+    <div class="cipher-menu">
+        <h3>Algorithms</h3>
+        
+        <button class="cipher-btn active" onclick="setCipher('caesar', this)">
+            <span class="cipher-icon">🔄</span> Caesar Cipher
+        </button>
+        <button class="cipher-btn" onclick="setCipher('dyn_caesar', this)">
+            <span class="cipher-icon">📈</span> Dynamic Caesar (AP)
+        </button>
+        <button class="cipher-btn" onclick="setCipher('vigenere', this)">
+            <span class="cipher-icon">🔤</span> Vigenère Cipher
+        </button>
+        <button class="cipher-btn" onclick="setCipher('playfair', this)">
+            <span class="cipher-icon">🔲</span> Playfair Cipher
+        </button>
+        <button class="cipher-btn" onclick="setCipher('rot13', this)">
+            <span class="cipher-icon">1️⃣3️⃣</span> ROT13
+        </button>
+        <button class="cipher-btn" onclick="setCipher('atbash', this)">
+            <span class="cipher-icon">🪞</span> Atbash Cipher
+        </button>
+        <button class="cipher-btn" onclick="setCipher('xor', this)">
+            <span class="cipher-icon">✖️</span> XOR Cipher
+        </button>
+        <button class="cipher-btn" onclick="setCipher('railfence', this)">
+            <span class="cipher-icon">🛤️</span> Rail Fence
+        </button>
+        <button class="cipher-btn" onclick="setCipher('columnar', this)">
+            <span class="cipher-icon">📊</span> Columnar Transposition
+        </button>
+        <button class="cipher-btn" onclick="setCipher('base64', this)">
+            <span class="cipher-icon">6️⃣4️⃣</span> Base64
+        </button>
+        
+        <button class="cipher-btn hybrid" onclick="setCipher('hybrid', this)">
+            <span class="cipher-icon">🧬</span> Hybrid Builder
+        </button>
+        <button class="cipher-btn hybrid" onclick="setCipher('flowchart', this)" style="border-color:#a371f7; color:#a371f7; background:rgba(163,113,247,0.05);">
+            <span class="cipher-icon">📋</span> Flowchart Pipeline
+        </button>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="cipher-workspace">
+        <div class="workspace-header">
+            <div>
+                <h2 id="cipher-title">Caesar Cipher</h2>
+                <div class="workspace-desc" id="cipher-desc">
+                    A simple substitution cipher that replaces each letter with a letter some fixed number of positions down the alphabet.
+                </div>
+            </div>
+            <div class="header-actions">
+                <div id="cipher-badge" style="background: rgba(163, 113, 247, 0.15); color: var(--accent-main); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid var(--accent-main); text-align: center;">
+                    SUBSTITUTION
+                </div>
+                <button class="btn-code" id="btn-show-code" onclick="showCodeModal()">
+                    &lt;/&gt; View Source Code
+                </button>
+            </div>
+        </div>
+
+        <div class="io-section">
+            <div class="io-label">Input Data</div>
+            <textarea id="crypto-input" placeholder="Enter text to encrypt or decrypt..."></textarea>
+        </div>
+
+        <!-- Normal Cipher Settings -->
+        <div class="settings-row" id="settings-container">
+            <div class="io-label" id="key-label" style="margin:0;">Shift Value:</div>
+            <input type="text" id="crypto-key" value="3" placeholder="e.g. 3">
+            <div class="error-msg" id="key-error">Invalid key format.</div>
+        </div>
+        
+        <!-- Hybrid Cipher Settings -->
+        <div class="settings-row" id="hybrid-container" style="display:none; align-items:flex-start;">
+            <div class="hybrid-step">
+                <div class="io-label">Step 1 Algorithm</div>
+                <select id="hybrid-algo-1" onchange="updateHybridUI()">
+                    <!-- Options populated by JS -->
+                </select>
+                <div class="io-label" id="h-key-label-1" style="margin-top:10px;">Key 1:</div>
+                <input type="text" id="hybrid-key-1" placeholder="Key 1">
+            </div>
+            <div class="hybrid-step">
+                <div class="io-label">Step 2 Algorithm</div>
+                <select id="hybrid-algo-2" onchange="updateHybridUI()">
+                    <!-- Options populated by JS -->
+                </select>
+                <div class="io-label" id="h-key-label-2" style="margin-top:10px;">Key 2:</div>
+                <input type="text" id="hybrid-key-2" placeholder="Key 2">
+            </div>
+            <div class="error-msg" id="hybrid-error" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- Flowchart Custom Pipeline Settings -->
+        <div class="settings-row" id="flowchart-container" style="display:none; flex-direction:column; align-items:stretch;">
+            <div class="toggle-container">
+                <div class="toggle-btn active" id="mode-instant" onclick="setFlowchartMode('instant')">Instant Execution</div>
+                <div class="toggle-btn" id="mode-step" onclick="setFlowchartMode('step')">Step-by-Step Mode</div>
+            </div>
+            
+            <div class="flowchart-step" id="fc-step-1">
+                <div class="io-label" style="color:var(--text-main);">Step 1</div>
+                <select id="fc-algo-1" onchange="updateFlowchartUI(1)"></select>
+                <div id="fc-key-label-1" class="io-label" style="font-size:0.85rem; color:var(--text-muted);">Key:</div>
+                <input type="text" id="fc-key-1" style="width:100%;">
+            </div>
+            
+            <div class="flowchart-step" id="fc-step-2">
+                <div class="io-label" style="color:var(--text-main);">Step 2</div>
+                <select id="fc-algo-2" onchange="updateFlowchartUI(2)"></select>
+                <div id="fc-key-label-2" class="io-label" style="font-size:0.85rem; color:var(--text-muted); display:none;">Key:</div>
+                <input type="text" id="fc-key-2" style="width:100%; display:none;">
+            </div>
+
+            <div class="flowchart-step" id="fc-step-3">
+                <div class="io-label" style="color:var(--text-main);">Step 3</div>
+                <select id="fc-algo-3" onchange="updateFlowchartUI(3)"></select>
+                <div id="fc-key-label-3" class="io-label" style="font-size:0.85rem; color:var(--text-muted); display:none;">Key:</div>
+                <input type="text" id="fc-key-3" style="width:100%; display:none;">
+            </div>
+
+            <div class="flowchart-step" id="fc-step-4">
+                <div class="io-label" style="color:var(--text-main);">Step 4</div>
+                <select id="fc-algo-4" onchange="updateFlowchartUI(4)"></select>
+                <div id="fc-key-label-4" class="io-label" style="font-size:0.85rem; color:var(--text-muted); display:none;">Key:</div>
+                <input type="text" id="fc-key-4" style="width:100%; display:none;">
+            </div>
+
+            <div class="flowchart-step" id="fc-step-5">
+                <div class="io-label" style="color:var(--text-main);">Step 5</div>
+                <select id="fc-algo-5" onchange="updateFlowchartUI(5)"></select>
+                <div id="fc-key-label-5" class="io-label" style="font-size:0.85rem; color:var(--text-muted); display:none;">Key:</div>
+                <input type="text" id="fc-key-5" style="width:100%; display:none;">
+            </div>
+
+            <div class="error-msg" id="flowchart-error" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="action-row" id="main-actions">
+            <button class="btn-run btn-encrypt" onclick="runCrypto('encrypt')">🔒 Encrypt</button>
+            <button class="btn-run btn-decrypt" onclick="runCrypto('decrypt')">🔓 Decrypt</button>
+        </div>
+        
+        <div class="action-row" id="step-actions" style="display:none;">
+            <button class="btn-run btn-encrypt" id="btn-start-enc" onclick="startStepByStep('encrypt')">🔒 Start Encrypt</button>
+            <button class="btn-run btn-decrypt" id="btn-start-dec" onclick="startStepByStep('decrypt')">🔓 Start Decrypt</button>
+            <button class="btn-run btn-step" id="btn-next-step" style="display:none;" onclick="runNextStep()">▶ Run Next Step</button>
+            <button class="btn-run btn-reset" id="btn-reset-step" style="display:none;" onclick="resetStepByStep()">⏹ Reset</button>
+        </div>
+
+        <div class="io-section">
+            <div class="io-label">Output Data</div>
+            <textarea id="crypto-output" placeholder="Result will appear here..." readonly style="background: rgba(0,0,0,0.2);"></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- Source Code Modal -->
+<div id="code-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="lang-tabs">
+                <div class="lang-tab" onclick="switchLang('c', this)">C</div>
+                <div class="lang-tab" onclick="switchLang('java', this)">Java</div>
+                <div class="lang-tab active" onclick="switchLang('python', this)">Python</div>
+                <div class="lang-tab" onclick="switchLang('cpp', this)">C++</div>
+            </div>
+            <div class="modal-close" onclick="closeCodeModal()">&times;</div>
+        </div>
+        <div id="flowchart-code-toggles" style="display:none; justify-content:center; gap:10px; padding:10px; background:var(--bg-main); border-bottom:1px solid var(--border-color);">
+            <button id="fc-code-instant" class="btn-run" style="padding: 6px 16px; font-size: 0.85rem; background: var(--accent-main); border:none; color:white; border-radius:6px; cursor:pointer;" onclick="setFlowchartCodeMode('instant')">Instant Code</button>
+            <button id="fc-code-step" class="btn-run" style="padding: 6px 16px; font-size: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius:6px; cursor:pointer;" onclick="setFlowchartCodeMode('step')">Step-by-Step Code</button>
+        </div>
+        <div class="code-body">
+            <pre id="code-display"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentCipher = 'caesar';
+    let currentLang = 'python';
+
+    let fcMode = 'instant';
+    let stepState = { active: false, action: 'encrypt', currentStep: 1, data: '' };
+
+    const snippets = {
+        caesar: { python: `// Caesar Logic`, js: `// Caesar Logic`, cpp: `// Caesar Logic` },
+        dyn_caesar: { python: `// Dyn Caesar`, js: `// Dyn Caesar`, cpp: `// Dyn Caesar` },
+        playfair: { python: `// Playfair`, js: `// Playfair`, cpp: `// Playfair` },
+        vigenere: { python: `// Vigenere`, js: `// Vigenere`, cpp: `// Vigenere` },
+        rot13: { python: `// ROT13`, js: `// ROT13`, cpp: `// ROT13` },
+        atbash: { python: `// Atbash`, js: `// Atbash`, cpp: `// Atbash` },
+        xor: { python: `// XOR`, js: `// XOR`, cpp: `// XOR` },
+        railfence: { python: `// Railfence`, js: `// Railfence`, cpp: `// Railfence` },
+        columnar: { python: `// Columnar`, js: `// Columnar`, cpp: `// Columnar` },
+        base64: { python: `// Base64`, js: `// Base64`, cpp: `// Base64` },
+        hybrid: { python: `// Hybrid`, js: `// Hybrid`, cpp: `// Hybrid` },
+        flowchart: { python: `# LIFO Decrypt Logic\n# 1. Reverse Salting\n# 2. Playfair Decrypt\n# 3. Swap Adjacent\n# 4. Reverse String\n# 5. Caesar AP Decrypt`, js: `// JS Flowchart Implementation`, cpp: `// C++ Flowchart Implementation` }
+    };
+
+    const cipherInfo = {
+        'none': { title: 'None (Skip)', showKey: false },
+        'caesar': { title: 'Caesar Cipher', type: 'SUBSTITUTION', key: 'Shift (Int)', def: '3', showKey: true },
+        'dyn_caesar': { title: 'Dynamic Caesar (AP)', type: 'SUBSTITUTION', key: 'Format (a,d)', def: '3,1', showKey: true },
+        'vigenere': { title: 'Vigenère Cipher', type: 'SUBSTITUTION', key: 'Keyword', def: 'KEY', showKey: true },
+        'playfair': { title: 'Playfair Cipher', type: 'SUBSTITUTION', key: 'Keyword', def: 'MATRIX', showKey: true },
+        'rot13': { title: 'ROT13', type: 'SUBSTITUTION', showKey: false },
+        'atbash': { title: 'Atbash Cipher', type: 'SUBSTITUTION', showKey: false },
+        'xor': { title: 'XOR Cipher', type: 'BITWISE', key: 'Key (0-255)', def: '42', showKey: true },
+        'railfence': { title: 'Rail Fence Cipher', type: 'TRANSPOSITION', key: 'Rails (Int)', def: '3', showKey: true },
+        'columnar': { title: 'Columnar Transposition', type: 'TRANSPOSITION', key: 'Keyword', def: 'HACK', showKey: true },
+        'base64': { title: 'Base64 Encoding', type: 'ENCODING', showKey: false },
+        'custom_reverse': { title: 'Reverse String', showKey: false },
+        'custom_swap': { title: 'Swap Adjacent Letters', showKey: false },
+        'custom_salt': { title: 'Dynamic Salting', key: 'Equation (e.g. x-5)', def: 'x-5', showKey: true },
+        'hybrid': { title: 'Hybrid Cipher Builder', desc: 'Chain two algorithms.', type: 'HYBRID', showKey: false },
+        'flowchart': { title: 'Flowchart Custom Pipeline', desc: 'Build a dynamic 5-step custom pipeline.', type: 'ADVANCED PIPELINE', showKey: false }
+    };
+
+    const algoOptionsHTML = `
+        <option value="none">None (Skip)</option>
+        <option disabled>--- Standard Ciphers ---</option>
+        <option value="caesar">Caesar Cipher</option>
+        <option value="dyn_caesar">Dynamic Caesar (AP)</option>
+        <option value="vigenere">Vigenère Cipher</option>
+        <option value="playfair">Playfair Cipher</option>
+        <option value="rot13">ROT13</option>
+        <option value="atbash">Atbash Cipher</option>
+        <option value="xor">XOR Cipher</option>
+        <option value="railfence">Rail Fence</option>
+        <option value="columnar">Columnar Transposition</option>
+        <option value="base64">Base64</option>
+        <option disabled>--- Custom Operations ---</option>
+        <option value="custom_reverse">Reverse String</option>
+        <option value="custom_swap">Swap Adjacent Letters</option>
+        <option value="custom_salt">Dynamic Salting (Equation)</option>
+    `;
+
+    function initDropdowns() {
+        // Hybrid Builder Dropdowns
+        document.getElementById('hybrid-algo-1').innerHTML = algoOptionsHTML;
+        document.getElementById('hybrid-algo-2').innerHTML = algoOptionsHTML;
+        document.getElementById('hybrid-algo-1').value = 'caesar';
+        document.getElementById('hybrid-algo-2').value = 'base64';
+
+        // Flowchart Dropdowns
+        for(let i=1; i<=5; i++) {
+            document.getElementById('fc-algo-'+i).innerHTML = algoOptionsHTML;
+        }
+        document.getElementById('fc-algo-1').value = 'dyn_caesar';
+        document.getElementById('fc-algo-2').value = 'custom_reverse';
+        document.getElementById('fc-algo-3').value = 'custom_swap';
+        document.getElementById('fc-algo-4').value = 'playfair';
+        document.getElementById('fc-algo-5').value = 'custom_salt';
+        
+        for(let i=1; i<=5; i++) updateFlowchartUI(i);
+        updateHybridUI();
+    }
+
+    function setCipher(cid, btnElement) {
+        currentCipher = cid;
+        document.querySelectorAll('.cipher-btn').forEach(btn => btn.classList.remove('active'));
+        btnElement.classList.add('active');
+
+        const info = cipherInfo[cid];
+        document.getElementById('cipher-title').innerText = info.title || cid;
+        document.getElementById('cipher-desc').innerText = info.desc || '';
+        document.getElementById('cipher-badge').innerText = info.type || '';
+        
+        document.getElementById('settings-container').style.display = 'none';
+        document.getElementById('hybrid-container').style.display = 'none';
+        document.getElementById('flowchart-container').style.display = 'none';
+        document.getElementById('btn-show-code').style.display = 'flex';
+        
+        resetStepByStep();
+        document.getElementById('main-actions').style.display = 'flex';
+        document.getElementById('step-actions').style.display = 'none';
+
+        if (cid === 'hybrid') {
+            document.getElementById('hybrid-container').style.display = 'flex';
+            document.getElementById('btn-show-code').style.display = 'none';
+            updateHybridUI();
+        } else if (cid === 'flowchart') {
+            document.getElementById('flowchart-container').style.display = 'flex';
+            document.getElementById('btn-show-code').style.display = 'flex';
+            setFlowchartMode(fcMode);
+        } else if (info.showKey) {
+            document.getElementById('settings-container').style.display = 'flex';
+            document.getElementById('key-label').innerText = info.key + ':';
+            document.getElementById('crypto-key').value = info.def;
+        }
+        
+        document.getElementById('crypto-output').value = '';
+        document.getElementById('key-error').style.display = 'none';
+        document.getElementById('hybrid-error').style.display = 'none';
+        document.getElementById('flowchart-error').style.display = 'none';
+        updateCodeView();
+    }
+
+    // --- FLOWCHART MODE LOGIC ---
+    function updateFlowchartUI(step) {
+        const algo = document.getElementById('fc-algo-' + step).value;
+        const info = cipherInfo[algo];
+        const keyContainer = document.getElementById('fc-key-' + step);
+        const labelContainer = document.getElementById('fc-key-label-' + step);
+        
+        if (info && info.showKey) {
+            keyContainer.style.display = 'block';
+            labelContainer.style.display = 'block';
+            labelContainer.innerText = info.key + ':';
+            if(keyContainer.value === '' && info.def) {
+                keyContainer.value = info.def;
+            }
+        } else {
+            keyContainer.style.display = 'none';
+            labelContainer.style.display = 'none';
+        }
+    }
+
+    function setFlowchartMode(mode) {
+        fcMode = mode;
+        document.getElementById('mode-instant').classList.remove('active');
+        document.getElementById('mode-step').classList.remove('active');
+        document.getElementById('mode-' + mode).classList.add('active');
+        resetStepByStep();
+        if (mode === 'instant') {
+            document.getElementById('main-actions').style.display = 'flex';
+            document.getElementById('step-actions').style.display = 'none';
+        } else {
+            document.getElementById('main-actions').style.display = 'none';
+            document.getElementById('step-actions').style.display = 'flex';
+        }
+    }
+    
+    function resetStepByStep() {
+        stepState.active = false; stepState.currentStep = 1; stepState.data = '';
+        document.getElementById('btn-start-enc').style.display = 'flex';
+        document.getElementById('btn-start-dec').style.display = 'flex';
+        document.getElementById('btn-next-step').style.display = 'none';
+        document.getElementById('btn-reset-step').style.display = 'none';
+        for (let i = 1; i <= 5; i++) {
+            let el = document.getElementById('fc-step-' + i);
+            if(el) el.classList.remove('active-step');
+        }
+        document.getElementById('crypto-output').value = '';
+        updateCodeView();
+    }
+
+    function startStepByStep(action) {
+        const input = document.getElementById('crypto-input').value;
+        if (!input) { document.getElementById('crypto-output').value = 'Please enter some data.'; return; }
+        document.getElementById('flowchart-error').style.display = 'none';
+        
+        stepState.active = true; stepState.action = action;
+        stepState.currentStep = action === 'encrypt' ? 1 : 5;
+        stepState.data = input;
+        
+        document.getElementById('btn-start-enc').style.display = 'none';
+        document.getElementById('btn-start-dec').style.display = 'none';
+        document.getElementById('btn-next-step').style.display = 'flex';
+        document.getElementById('btn-reset-step').style.display = 'flex';
+        
+        document.getElementById('crypto-output').value = `[Step-by-Step Initialized]\nData: ${stepState.data}\n\nClick "Run Next Step" to begin.`;
+        updateStepHighlight();
+        updateCodeView();
+    }
+    
+    function updateStepHighlight() {
+        for (let i=1; i<=5; i++) {
+            let el = document.getElementById('fc-step-' + i);
+            if(el) el.classList.remove('active-step');
+        }
+        let currentEl = document.getElementById('fc-step-' + stepState.currentStep);
+        if(currentEl) currentEl.classList.add('active-step');
+    }
+    
+    function runNextStep() {
+        if (!stepState.active) return;
+        const err = document.getElementById('flowchart-error');
+        err.style.display = 'none';
+        
+        try {
+            const step = stepState.currentStep;
+            const algo = document.getElementById('fc-algo-' + step).value;
+            const key = document.getElementById('fc-key-' + step).value;
+            
+            let res = executePipelineStep(algo, stepState.data, key, stepState.action);
+            stepState.data = res;
+            
+            const actionLabel = stepState.action === 'encrypt' ? 'Encrypt' : 'Decrypt';
+            document.getElementById('crypto-output').value = `[After Step ${step} - ${actionLabel}]\n${res}`;
+            
+            if (stepState.action === 'encrypt') {
+                if (stepState.currentStep < 5) {
+                    stepState.currentStep++;
+                    updateStepHighlight();
+                    updateCodeView();
+                } else {
+                    document.getElementById('btn-next-step').style.display = 'none';
+                    document.getElementById('crypto-output').value = `[Final Encrypted Result]\n${res}`;
+                    for(let i=1; i<=5; i++) document.getElementById('fc-step-'+i).classList.remove('active-step');
+                    updateCodeView();
+                }
+            } else {
+                if (stepState.currentStep > 1) {
+                    stepState.currentStep--;
+                    updateStepHighlight();
+                    updateCodeView();
+                } else {
+                    document.getElementById('btn-next-step').style.display = 'none';
+                    document.getElementById('crypto-output').value = `[Final Decrypted Result]\n${res}`;
+                    for(let i=1; i<=5; i++) document.getElementById('fc-step-'+i).classList.remove('active-step');
+                    updateCodeView();
+                }
+            }
+        } catch (e) {
+            err.innerText = "Step " + stepState.currentStep + " Error: " + e.message; 
+            err.style.display = 'block';
+        }
+    }
+
+    // --- PIPELINE ENGINE LOGIC ---
+    function swapAdjacent(str) {
+        let res = '';
+        for(let i=0; i<str.length; i+=2) {
+            if(i+1 < str.length) { res += str[i+1] + str[i]; }
+            else { res += str[i]; }
+        }
+        return res;
+    }
+
+    function executePipelineStep(algo, text, key, action) {
+        if (algo === 'none') return text;
+        
+        if (algo === 'custom_reverse') {
+            return text.split('').reverse().join('');
+        }
+        if (algo === 'custom_swap') {
+            return swapAdjacent(text);
+        }
+        if (algo === 'custom_salt') {
+            let match = (key||"").match(/^x\s*([+-])\s*(\d+)$/i);
+            if (!match) throw new Error("Salting equation must be like 'x-5' or 'x+3'");
+            let op = match[1];
+            let num = parseInt(match[2], 10);
+
+            if (action === 'encrypt') {
+                let x = text.length;
+                let val = op === '+' ? x + num : x - num;
+                let numSalts = Math.max(0, val);
+                let salt = '';
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                for(let i=0; i<numSalts; i++) salt += chars.charAt(Math.floor(Math.random() * chars.length));
+                return text + salt;
+            } else {
+                let L = text.length;
+                let x = L;
+                if (op === '+') {
+                    if (L >= num) x = Math.floor((L - num) / 2);
+                } else {
+                    if (L > num) x = Math.floor((L + num) / 2);
+                }
+                return text.substring(0, x);
+            }
+        }
+        
+        return executeSingleAlgo(algo, text, key, action);
+    }
+
+    function executeFlowchartPipeline(text, action) {
+        let currentText = text;
+        if (action === 'encrypt') {
+            for(let i=1; i<=5; i++) {
+                const algo = document.getElementById('fc-algo-'+i).value;
+                const key = document.getElementById('fc-key-'+i).value;
+                currentText = executePipelineStep(algo, currentText, key, 'encrypt');
+            }
+        } else {
+            // Decrypt LIFO
+            for(let i=5; i>=1; i--) {
+                const algo = document.getElementById('fc-algo-'+i).value;
+                const key = document.getElementById('fc-key-'+i).value;
+                currentText = executePipelineStep(algo, currentText, key, 'decrypt');
+            }
+        }
+        return currentText;
+    }
+
+
+    function updateHybridUI() {
+        const a1 = document.getElementById('hybrid-algo-1').value;
+        const a2 = document.getElementById('hybrid-algo-2').value;
+        const i1 = cipherInfo[a1];
+        if (i1 && i1.showKey) {
+            document.getElementById('h-key-label-1').innerText = i1.key + ':';
+            document.getElementById('h-key-label-1').style.display = 'block';
+            document.getElementById('hybrid-key-1').style.display = 'block';
+        } else {
+            document.getElementById('h-key-label-1').style.display = 'none';
+            document.getElementById('hybrid-key-1').style.display = 'none';
+        }
+
+        const i2 = cipherInfo[a2];
+        if (i2 && i2.showKey) {
+            document.getElementById('h-key-label-2').innerText = i2.key + ':';
+            document.getElementById('h-key-label-2').style.display = 'block';
+            document.getElementById('hybrid-key-2').style.display = 'block';
+        } else {
+            document.getElementById('h-key-label-2').style.display = 'none';
+            document.getElementById('hybrid-key-2').style.display = 'none';
+        }
+    }
+
+    function executeSingleAlgo(algo, text, key, action) {
+        if (algo === 'none') return text;
+        if (algo === 'caesar') {
+            const shift = parseInt(key, 10);
+            if (isNaN(shift)) throw new Error("Caesar: Shift must be an integer.");
+            return caesarCipher(text, action === 'encrypt' ? shift : -shift);
+        } else if (algo === 'dyn_caesar') {
+            const parts = (key||"").split(',');
+            if(parts.length !== 2) throw new Error("Dynamic Caesar: Key must be 'a,d' format (e.g. 3,1).");
+            const a = parseInt(parts[0].trim(), 10);
+            const d = parseInt(parts[1].trim(), 10);
+            if(isNaN(a) || isNaN(d)) throw new Error("Dynamic Caesar: Both 'a' and 'd' must be integers.");
+            return dynCaesarCipher(text, a, d, action);
+        } else if (algo === 'playfair') {
+            if (!key || !/^[a-zA-Z]+$/.test(key)) throw new Error("Playfair: Keyword must be alphabetic.");
+            return playfairCipher(text, key, action);
+        } else if (algo === 'vigenere') {
+            if (!key || !/^[a-zA-Z]+$/.test(key)) throw new Error("Vigenère: Key must be alphabetic.");
+            return vigenereCipher(text, key, action);
+        } else if (algo === 'rot13') {
+            return caesarCipher(text, 13);
+        } else if (algo === 'atbash') {
+            return atbashCipher(text);
+        } else if (algo === 'xor') {
+            const num = parseInt(key, 10);
+            if (isNaN(num)) throw new Error("XOR: Key must be integer.");
+            return xorCipher(text, num);
+        } else if (algo === 'railfence') {
+            const rails = parseInt(key, 10);
+            if (isNaN(rails) || rails < 2) throw new Error("Rail Fence: Rails must be >= 2.");
+            return action === 'encrypt' ? railFenceEncrypt(text, rails) : railFenceDecrypt(text, rails);
+        } else if (algo === 'columnar') {
+            if (!key) throw new Error("Columnar: Key required.");
+            return action === 'encrypt' ? columnarEncrypt(text, key) : columnarDecrypt(text, key);
+        } else if (algo === 'base64') {
+            if (action === 'encrypt') return btoa(unescape(encodeURIComponent(text)));
+            return decodeURIComponent(escape(atob(text)));
+        }
+        return text;
+    }
+
+    function runCrypto(action) {
+        const input = document.getElementById('crypto-input').value;
+        const outputEl = document.getElementById('crypto-output');
+        const err1 = document.getElementById('key-error');
+        const err2 = document.getElementById('hybrid-error');
+        const err3 = document.getElementById('flowchart-error');
+        err1.style.display = 'none'; err2.style.display = 'none'; err3.style.display = 'none';
+        
+        if (!input) { outputEl.value = 'Please enter some data.'; return; }
+
+        try {
+            if (currentCipher === 'flowchart') {
+                outputEl.value = executeFlowchartPipeline(input, action);
+            }
+            else if (currentCipher === 'hybrid') {
+                const a1 = document.getElementById('hybrid-algo-1').value;
+                const a2 = document.getElementById('hybrid-algo-2').value;
+                const k1 = document.getElementById('hybrid-key-1').value;
+                const k2 = document.getElementById('hybrid-key-2').value;
+                
+                let res = '';
+                if (action === 'encrypt') {
+                    res = executeSingleAlgo(a1, input, k1, 'encrypt');
+                    res = executeSingleAlgo(a2, res, k2, 'encrypt');
+                } else {
+                    res = executeSingleAlgo(a2, input, k2, 'decrypt');
+                    res = executeSingleAlgo(a1, res, k1, 'decrypt');
+                }
+                outputEl.value = res;
+            } else {
+                const key = document.getElementById('crypto-key').value;
+                outputEl.value = executeSingleAlgo(currentCipher, input, key, action);
+            }
+        } catch (e) {
+            if (currentCipher === 'flowchart') { err3.innerText = e.message; err3.style.display = 'block'; }
+            else if (currentCipher === 'hybrid') { err2.innerText = e.message; err2.style.display = 'block'; }
+            else { err1.innerText = e.message; err1.style.display = 'block'; }
+            outputEl.value = 'Error processing request.';
+        }
+    }
+
+
+    // --- ALGORITHM IMPLEMENTATIONS ---
+    function caesarCipher(str, shift) {
+        shift = ((shift % 26) + 26) % 26;
+        return str.replace(/[a-zA-Z]/g, c => {
+            const base = c <= 'Z' ? 65 : 97;
+            return String.fromCharCode(((c.charCodeAt(0) - base + shift) % 26) + base);
+        });
+    }
+    
+    function dynCaesarCipher(str, a, d, action) {
+        let idx = 0;
+        return str.replace(/[a-zA-Z]/g, c => {
+            let shift = a + (idx * d);
+            if (action === 'decrypt') shift = -shift;
+            shift = ((shift % 26) + 26) % 26;
+            const base = c <= 'Z' ? 65 : 97;
+            idx++; 
+            return String.fromCharCode(((c.charCodeAt(0) - base + shift) % 26) + base);
+        });
+    }
+
+    function playfairCipher(str, key, action) {
+        let matrix = [];
+        let used = new Set();
+        let kStr = (key + "ABCDEFGHIJKLMNOPQRSTUVWXYZ").toUpperCase().replace(/J/g, "I");
+        for (let char of kStr) {
+            if (/[A-Z]/.test(char) && !used.has(char)) {
+                used.add(char); matrix.push(char);
+            }
+        }
+        const getPos = (char) => {
+            let idx = matrix.indexOf(char.toUpperCase());
+            return [Math.floor(idx / 5), idx % 5];
+        };
+
+        let pairs = [];
+        if (action === 'encrypt') {
+            // Convert to uppercase, but use lowercase 'i' to mark 'J'
+            let pText = str.toUpperCase().replace(/[^A-Z]/g, "");
+            pText = pText.replace(/J/g, "i");
+            
+            for (let i = 0; i < pText.length; i++) {
+                if (i === pText.length - 1) {
+                    pairs.push([pText[i], 'x']); // lowercase x for padding
+                } else if (pText[i].toUpperCase() === pText[i+1].toUpperCase()) {
+                    pairs.push([pText[i], 'x']);
+                } else {
+                    pairs.push([pText[i], pText[i+1]]);
+                    i++;
+                }
+            }
+        } else {
+            // Decrypt assumes ciphertext might have case metadata
+            let pText = str.replace(/[^a-zA-Z]/g, "");
+            if (pText.length % 2 !== 0) throw new Error("Playfair: Ciphertext length must be even to decrypt.");
+            for (let i = 0; i < pText.length; i+=2) {
+                pairs.push([pText[i], pText[i+1]]);
+            }
+        }
+
+        let res = "";
+        for (let pair of pairs) {
+            let [r1, c1] = getPos(pair[0]);
+            let [r2, c2] = getPos(pair[1]);
+            
+            let out1, out2;
+            if (r1 === r2) {
+                let shift = action === 'encrypt' ? 1 : 4; 
+                out1 = matrix[r1 * 5 + (c1 + shift) % 5];
+                out2 = matrix[r2 * 5 + (c2 + shift) % 5];
+            } else if (c1 === c2) {
+                let shift = action === 'encrypt' ? 1 : 4;
+                out1 = matrix[((r1 + shift) % 5) * 5 + c1];
+                out2 = matrix[((r2 + shift) % 5) * 5 + c2];
+            } else {
+                out1 = matrix[r1 * 5 + c2];
+                out2 = matrix[r2 * 5 + c1];
+            }
+            
+            // Transfer lowercase metadata
+            if (pair[0] === pair[0].toLowerCase()) out1 = out1.toLowerCase();
+            if (pair[1] === pair[1].toLowerCase()) out2 = out2.toLowerCase();
+            
+            res += out1 + out2;
+        }
+        
+        if (action === 'decrypt') {
+            // Strip explicit lowercase 'x' padding
+            res = res.replace(/x/g, "");
+            // Restore lowercase 'i' back to 'J'
+            res = res.replace(/i/g, "J");
+            // Convert everything else back to uppercase
+            res = res.toUpperCase();
+        }
+        
+        return res;
+    }
+
+    function vigenereCipher(str, key, action) {
+        let res = '', j = 0; key = key.toUpperCase();
+        for (let i = 0; i < str.length; i++) {
+            let c = str[i];
+            if (c.match(/[a-zA-Z]/)) {
+                const base = c <= 'Z' ? 65 : 97;
+                const kShift = key[j % key.length].charCodeAt(0) - 65;
+                const shift = action === 'encrypt' ? kShift : -kShift;
+                res += String.fromCharCode((((c.charCodeAt(0) - base + shift) % 26) + 26) % 26 + base);
+                j++;
+            } else { res += c; }
+        }
+        return res;
+    }
+
+    function atbashCipher(str) {
+        return str.replace(/[a-zA-Z]/g, c => {
+            const base = c <= 'Z' ? 65 : 97;
+            return String.fromCharCode(base + (25 - (c.charCodeAt(0) - base)));
+        });
+    }
+
+    function xorCipher(str, key) {
+        return str.split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
+    }
+
+    function railFenceEncrypt(text, rails) {
+        if(rails <= 1) return text;
+        let fence = Array.from({length: rails}, () => []);
+        let rail = 0, dir = 1;
+        for (let char of text) {
+            fence[rail].push(char);
+            rail += dir;
+            if (rail === 0 || rail === rails - 1) dir = -dir;
+        }
+        return fence.map(r => r.join('')).join('');
+    }
+
+    function railFenceDecrypt(text, rails) {
+        if(rails <= 1) return text;
+        let fence = Array.from({length: rails}, () => Array(text.length).fill(null));
+        let rail = 0, dir = 1;
+        for (let i = 0; i < text.length; i++) {
+            fence[rail][i] = '*';
+            rail += dir;
+            if (rail === 0 || rail === rails - 1) dir = -dir;
+        }
+        let index = 0;
+        for (let r = 0; r < rails; r++) {
+            for (let c = 0; c < text.length; c++) {
+                if (fence[r][c] === '*' && index < text.length) {
+                    fence[r][c] = text[index++];
+                }
+            }
+        }
+        let res = ''; rail = 0; dir = 1;
+        for (let i = 0; i < text.length; i++) {
+            res += fence[rail][i];
+            rail += dir;
+            if (rail === 0 || rail === rails - 1) dir = -dir;
+        }
+        return res;
+    }
+
+    function columnarEncrypt(text, keyword) {
+        const order = Array.from(keyword).map((c, i) => ({c, i})).sort((a,b) => a.c.localeCompare(b.c));
+        const cols = keyword.length;
+        const grid = Array.from({length: cols}, () => []);
+        for(let i=0; i<text.length; i++) grid[i % cols].push(text[i]);
+        return order.map(o => grid[o.i].join('')).join('');
+    }
+
+    function columnarDecrypt(text, keyword) {
+        const order = Array.from(keyword).map((c, i) => ({c, i})).sort((a,b) => a.c.localeCompare(b.c));
+        const cols = keyword.length;
+        const rows = Math.ceil(text.length / cols);
+        const fullCols = text.length % cols;
+        const grid = Array.from({length: cols}, () => []);
+        
+        let idx = 0;
+        for(let o of order) {
+            let colLen = (fullCols === 0 || o.i < fullCols) ? rows : rows - 1;
+            grid[o.i] = text.slice(idx, idx + colLen).split('');
+            idx += colLen;
+        }
+        
+        let res = '';
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                if(grid[c][r]) res += grid[c][r];
+            }
+        }
+        return res;
+    }
+
+    // --- MODAL & CODE VIEWER ---
+    function showCodeModal() {
+        document.getElementById('code-modal').style.display = 'flex';
+        updateCodeView();
+    }
+    
+    function closeCodeModal() {
+        document.getElementById('code-modal').style.display = 'none';
+    }
+
+    function switchLang(lang, btnElement) {
+        currentLang = lang;
+        document.querySelectorAll('.lang-tab').forEach(b => b.classList.remove('active'));
+        btnElement.classList.add('active');
+        updateCodeView();
+    }
+
+    let currentFlowchartCodeMode = 'instant';
+
+    function setFlowchartCodeMode(mode) {
+        currentFlowchartCodeMode = mode;
+        document.getElementById('fc-code-instant').style.background = mode === 'instant' ? 'var(--accent-main)' : 'transparent';
+        document.getElementById('fc-code-instant').style.color = mode === 'instant' ? 'white' : 'var(--text-muted)';
+        document.getElementById('fc-code-step').style.background = mode === 'step' ? 'var(--accent-main)' : 'transparent';
+        document.getElementById('fc-code-step').style.color = mode === 'step' ? 'white' : 'var(--text-muted)';
+        updateCodeView();
+    }
+
+    const algoImplementations = {
+        c: {
+            caesar: `void apply_caesar(char* data) {\n    for(int i=0; data[i] != '\\0'; i++) {\n        if(data[i] >= 'a' && data[i] <= 'z') data[i] = ((data[i] - 'a' + 3) % 26) + 'a';\n        else if(data[i] >= 'A' && data[i] <= 'Z') data[i] = ((data[i] - 'A' + 3) % 26) + 'A';\n    }\n}`,
+            dyn_caesar: `void apply_dyn_caesar(char* data) {\n    for(int i=0; data[i] != '\\0'; i++) {\n        if(data[i] >= 'a' && data[i] <= 'z') data[i] = ((data[i] - 'a' + 3) % 26) + 'a';\n        else if(data[i] >= 'A' && data[i] <= 'Z') data[i] = ((data[i] - 'A' + 3) % 26) + 'A';\n    }\n}`,
+            custom_reverse: `void apply_custom_reverse(char* data) {\n    int len = strlen(data);\n    for(int i = 0; i < len / 2; i++) {\n        char temp = data[i];\n        data[i] = data[len - i - 1];\n        data[len - i - 1] = temp;\n    }\n}`,
+            custom_swap: `void apply_custom_swap(char* data) {\n    int len = strlen(data);\n    for(int i = 0; i < len - 1; i += 2) {\n        char temp = data[i];\n        data[i] = data[i+1];\n        data[i+1] = temp;\n    }\n}`,
+            custom_salt: `void apply_custom_salt(char* data) {\n    for(int i = 0; data[i] != '\\0'; i++) {\n        data[i] = data[i] ^ 5;\n    }\n}`,
+            playfair: `void apply_playfair(char* data) {\n    // Playfair 5x5 matrix loop logic\n    printf("  [Playfair execution block]\\n");\n}`
+        },
+        java: {
+            caesar: `    public static String applyCaesar(String data) {\n        StringBuilder sb = new StringBuilder();\n        for(char c : data.toCharArray()) {\n            if(Character.isLetter(c)) {\n                char base = Character.isLowerCase(c) ? 'a' : 'A';\n                sb.append((char)(((c - base + 3) % 26) + base));\n            } else sb.append(c);\n        }\n        return sb.toString();\n    }`,
+            dyn_caesar: `    public static String applyDyn_caesar(String data) {\n        StringBuilder sb = new StringBuilder();\n        for(char c : data.toCharArray()) {\n            if(Character.isLetter(c)) {\n                char base = Character.isLowerCase(c) ? 'a' : 'A';\n                sb.append((char)(((c - base + 3) % 26) + base));\n            } else sb.append(c);\n        }\n        return sb.toString();\n    }`,
+            custom_reverse: `    public static String applyCustom_reverse(String data) {\n        return new StringBuilder(data).reverse().toString();\n    }`,
+            custom_swap: `    public static String applyCustom_swap(String data) {\n        char[] arr = data.toCharArray();\n        for(int i = 0; i < arr.length - 1; i += 2) {\n            char temp = arr[i]; arr[i] = arr[i+1]; arr[i+1] = temp;\n        }\n        return new String(arr);\n    }`,
+            custom_salt: `    public static String applyCustom_salt(String data) {\n        char[] arr = data.toCharArray();\n        for(int i = 0; i < arr.length; i++) arr[i] = (char)(arr[i] ^ 5);\n        return new String(arr);\n    }`,
+            playfair: `    public static String applyPlayfair(String data) {\n        // Playfair 5x5 matrix loop logic\n        return data;\n    }`
+        },
+        python: {
+            caesar: `def apply_caesar(data):\n    res = []\n    for c in data:\n        if c.isalpha():\n            base = ord('a') if c.islower() else ord('A')\n            res.append(chr((ord(c) - base + 3) % 26 + base))\n        else:\n            res.append(c)\n    return "".join(res)`,
+            dyn_caesar: `def apply_dyn_caesar(data):\n    res = []\n    for c in data:\n        if c.isalpha():\n            base = ord('a') if c.islower() else ord('A')\n            res.append(chr((ord(c) - base + 3) % 26 + base))\n        else:\n            res.append(c)\n    return "".join(res)`,
+            custom_reverse: `def apply_custom_reverse(data):\n    return data[::-1]`,
+            custom_swap: `def apply_custom_swap(data):\n    arr = list(data)\n    for i in range(0, len(arr) - 1, 2):\n        arr[i], arr[i+1] = arr[i+1], arr[i]\n    return "".join(arr)`,
+            custom_salt: `def apply_custom_salt(data):\n    return "".join(chr(ord(c) ^ 5) for c in data)`,
+            playfair: `def apply_playfair(data):\n    # Playfair 5x5 matrix loop logic\n    return data`
+        },
+        cpp: {
+            caesar: `string apply_caesar(string data) {\n    for(int i = 0; i < data.length(); i++) {\n        if(isalpha(data[i])) {\n            char base = islower(data[i]) ? 'a' : 'A';\n            data[i] = ((data[i] - base + 3) % 26) + base;\n        }\n    }\n    return data;\n}`,
+            dyn_caesar: `string apply_dyn_caesar(string data) {\n    for(int i = 0; i < data.length(); i++) {\n        if(isalpha(data[i])) {\n            char base = islower(data[i]) ? 'a' : 'A';\n            data[i] = ((data[i] - base + 3) % 26) + base;\n        }\n    }\n    return data;\n}`,
+            custom_reverse: `string apply_custom_reverse(string data) {\n    string res = data;\n    int len = res.length();\n    for(int i = 0; i < len / 2; i++) swap(res[i], res[len - i - 1]);\n    return res;\n}`,
+            custom_swap: `string apply_custom_swap(string data) {\n    string res = data;\n    for(int i = 0; i < res.length() - 1; i += 2) swap(res[i], res[i+1]);\n    return res;\n}`,
+            custom_salt: `string apply_custom_salt(string data) {\n    for(int i = 0; i < data.length(); i++) data[i] = data[i] ^ 5;\n    return data;\n}`,
+            playfair: `string apply_playfair(string data) {\n    // Playfair 5x5 matrix loop logic\n    return data;\n}`
+        }
+    };
+
+    function generateFlowchartCode(lang, mode, steps) {
+        const validSteps = steps.filter(s => s !== 'none');
+        if (validSteps.length === 0) return '// Please configure pipeline steps in the flowchart first.';
+
+        let code = '';
+        
+        if (mode === 'instant') {
+            let defs = '';
+            let added = new Set();
+            validSteps.forEach(step => {
+                if (!added.has(step)) {
+                    if (algoImplementations[lang] && algoImplementations[lang][step]) {
+                        defs += algoImplementations[lang][step] + '\n\n';
+                    } else {
+                        if (lang === 'c') defs += `void apply_${step}(char* data) {\n    // TODO: Implement ${step} logic loop here\n}\n\n`;
+                        else if (lang === 'java') defs += `    public static String apply${step.charAt(0).toUpperCase() + step.slice(1)}(String data) {\n        // TODO: Implement ${step} logic loop here\n        return data;\n    }\n\n`;
+                        else if (lang === 'python') defs += `def apply_${step}(data):\n    # TODO: Implement ${step} logic loop here\n    return data\n\n`;
+                        else if (lang === 'cpp') defs += `string apply_${step}(string data) {\n    // TODO: Implement ${step} logic loop here\n    return data;\n}\n\n`;
+                    }
+                    added.add(step);
+                }
+            });
+
+            if (lang === 'c') {
+                code += `#include <stdio.h>\n#include <string.h>\n\n${defs}`;
+                code += `void execute_pipeline(char* data) {\n`;
+                validSteps.forEach((step, i) => { code += `    // [Instant] Apply ${step.toUpperCase()}\n    apply_${step}(data);\n`; });
+                code += `}\n`;
+            } else if (lang === 'java') {
+                code += `public class CryptoPipeline {\n\n${defs}`;
+                code += `    public static String execute(String data) {\n`;
+                validSteps.forEach((step, i) => { code += `        // [Instant] Apply ${step.toUpperCase()}\n        data = apply${step.charAt(0).toUpperCase() + step.slice(1)}(data);\n`; });
+                code += `        return data;\n    }\n}\n`;
+            } else if (lang === 'python') {
+                code += `${defs}def execute_pipeline(data):\n`;
+                validSteps.forEach((step, i) => { code += `    # [Instant] Apply ${step.toUpperCase()}\n    data = apply_${step}(data)\n`; });
+                code += `    return data\n`;
+            } else if (lang === 'cpp') {
+                code += `#include <iostream>\n#include <string>\nusing namespace std;\n\n${defs}`;
+                code += `string executePipeline(string data) {\n`;
+                validSteps.forEach((step, i) => { code += `    // [Instant] Apply ${step.toUpperCase()}\n    data = apply_${step}(data);\n`; });
+                code += `    return data;\n}\n`;
+            }
+            return code;
+        } 
+        
+        // STEP-BY-STEP MODE LOGIC
+        if (!stepState.active) {
+             return `// Please click "Start Encrypt" or "Start Decrypt" to begin step-by-step execution.\n// Code for the current active step will appear here.`;
+        }
+        
+        // Isolate the currently active physical step (0 to 4)
+        let currentStepIndex = stepState.currentStep - 1; 
+        
+        if (currentStepIndex < 0 || currentStepIndex > 4) {
+             return `// Pipeline execution finished.`;
+        }
+        
+        const currentStepAlgo = steps[currentStepIndex];
+        
+        if (currentStepAlgo === 'none') {
+            return `// STEP ${currentStepIndex + 1} is bypassed ('none').\n// No code is executed for this step.`;
+        }
+        
+        let singleDef = '';
+        if (algoImplementations[lang] && algoImplementations[lang][currentStepAlgo]) {
+            singleDef = algoImplementations[lang][currentStepAlgo] + '\n\n';
+        } else {
+            if (lang === 'c') singleDef = `void apply_${currentStepAlgo}(char* data) {\n    // TODO: Implement ${currentStepAlgo} logic loop here\n}\n\n`;
+            else if (lang === 'java') singleDef = `    public static String apply${currentStepAlgo.charAt(0).toUpperCase() + currentStepAlgo.slice(1)}(String data) {\n        // TODO: Implement ${currentStepAlgo} logic loop here\n        return data;\n    }\n\n`;
+            else if (lang === 'python') singleDef = `def apply_${currentStepAlgo}(data):\n    # TODO: Implement ${currentStepAlgo} logic loop here\n    return data\n\n`;
+            else if (lang === 'cpp') singleDef = `string apply_${currentStepAlgo}(string data) {\n    // TODO: Implement ${currentStepAlgo} logic loop here\n    return data;\n}\n\n`;
+        }
+
+        if (lang === 'c') {
+            code += `#include <stdio.h>\n#include <string.h>\n\n${singleDef}`;
+            code += `// STEP ${currentStepIndex + 1}: ${currentStepAlgo.toUpperCase()}\nvoid execute_current_step(char* data) {\n`;
+            code += `    apply_${currentStepAlgo}(data);\n`; 
+            code += `    printf("Output: %s\\n", data);\n`;
+            code += `}\n`;
+        } else if (lang === 'java') {
+            code += `public class StepByStepAlgo {\n\n${singleDef}`;
+            code += `    // STEP ${currentStepIndex + 1}: ${currentStepAlgo.toUpperCase()}\n    public static String executeCurrentStep(String data) {\n`;
+            code += `        data = apply${currentStepAlgo.charAt(0).toUpperCase() + currentStepAlgo.slice(1)}(data);\n`; 
+            code += `        System.out.println("Output: " + data);\n`;
+            code += `        return data;\n    }\n}\n`;
+        } else if (lang === 'python') {
+            code += `${singleDef}# STEP ${currentStepIndex + 1}: ${currentStepAlgo.toUpperCase()}\ndef execute_current_step(data):\n`;
+            code += `    data = apply_${currentStepAlgo}(data)\n`; 
+            code += `    print(f"Output: {data}")\n`;
+            code += `    return data\n`;
+        } else if (lang === 'cpp') {
+            code += `#include <iostream>\n#include <string>\nusing namespace std;\n\n${singleDef}`;
+            code += `// STEP ${currentStepIndex + 1}: ${currentStepAlgo.toUpperCase()}\nstring executeCurrentStep(string data) {\n`;
+            code += `    data = apply_${currentStepAlgo}(data);\n`; 
+            code += `    cout << "Output: " << data << endl;\n`;
+            code += `    return data;\n}\n`;
+        }
+        
+        return code;
+    }
+
+    function updateCodeView() {
+        const fcToggles = document.getElementById('flowchart-code-toggles');
+        
+        if (currentCipher === 'flowchart') {
+            if (fcToggles) fcToggles.style.display = 'flex';
+            const steps = [
+                document.getElementById('fc-algo-1').value,
+                document.getElementById('fc-algo-2').value,
+                document.getElementById('fc-algo-3').value,
+                document.getElementById('fc-algo-4').value,
+                document.getElementById('fc-algo-5').value
+            ];
+            const code = generateFlowchartCode(currentLang, currentFlowchartCodeMode, steps);
+            document.getElementById('code-display').innerText = code;
+            return;
+        }
+        
+        if (fcToggles) fcToggles.style.display = 'none';
+        const ciph = snippets[currentCipher];
+        if (ciph) {
+            document.getElementById('code-display').innerText = ciph[currentLang] || '// Snippet not available for this language.';
+        } else {
+            document.getElementById('code-display').innerText = '// Snippet not available.';
+        }
+    }
+    
+    window.onload = function() {
+        initDropdowns();
+    };
+</script>
+{% endblock %}

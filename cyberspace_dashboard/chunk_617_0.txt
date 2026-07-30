@@ -1,0 +1,31 @@
+        async function createLobby() {
+            const scenario = document.getElementById('create-scenario').value;
+            const hostTeam = document.getElementById('create-team').value;
+            try {
+                const res = await fetch('/api/lobby/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ max_players: 4, scenario: scenario, host_team: hostTeam })
+                });
+                
+                // If the user's session expired, the backend redirects to the login page (HTML)
+                if (res.redirected && res.url.includes('login')) {
+                    return showError('Session expired. Please refresh the page and log in again.');
+                }
+                
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    return showError('Server returned an invalid response. Please refresh the page.');
+                }
+                
+                const data = await res.json();
+                if (data.success) {
+                    currentLobbyId = data.lobby_id;
+                    myTeam = hostTeam; 
+                    isHost = true;
+                    showWaitingRoom(currentLobbyId, data.red_invite_code, data.blue_invite_code);
+                } else {
+                    showError(data.error);
+                }
+            } catch (err) { console.error(err); showError('Failed to create lobby. Check console.'); }
+        }

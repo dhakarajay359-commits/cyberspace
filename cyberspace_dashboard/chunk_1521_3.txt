@@ -1,0 +1,19 @@
+            } else if (window.currentScenario === 'custom_ctf') {
+                const desc = window.customDesc || 'No details provided by the host.';
+                targetArea.innerHTML = `
+                    <div class="bg-slate-800 p-2 text-xs font-mono text-slate-400 flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div> TARGET: CUSTOM SIMULATION
+                    </div>
+                    <div class="flex-1 bg-white p-4 overflow-y-auto text-black font-mono">
+                        <div class="max-w-2xl mx-auto border-2 border-slate-300 p-6 rounded bg-slate-50 shadow-md mt-4">
+                            <h2 class="text-2xl font-black text-slate-800 mb-4 flex items-center gap-2"><span class="mi">router</span> Simulated Endpoint</h2>
+                            <div class="text-slate-700 whitespace-pre-wrap mb-8 pb-6 border-b border-slate-300 text-sm leading-relaxed">${desc}</div>
+                            
+                            <label class="block text-xs font-bold text-slate-500 mb-2 tracking-widest uppercase">Inject Payload</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="target-input" placeholder="Enter attack payload..." class="flex-1 bg-white border border-slate-400 p-3 rounded text-black focus:border-red-500 outline-none transition">
+                                <button onclick="submitTargetForm()" class="bg-red-600 text-white px-8 py-3 rounded font-bold hover:bg-red-700 transition">EXECUTE</button>
+                            </div>
+                        </div>
+                    </div>`;
+            }

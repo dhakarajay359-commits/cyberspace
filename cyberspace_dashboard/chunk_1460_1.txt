@@ -1,0 +1,1 @@
+                            <select id="create-scenario" onchange="document.getElementById('custom-ctf-fields').classList.toggle('hidden', this.value !== 'custom_ctf')" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm">

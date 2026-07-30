@@ -1,0 +1,808 @@
+Created At: 2026-07-26T07:06:09Z
+Completed At: 2026-07-26T07:06:09Z
+File Path: `file:///c:/Users/ASUS/OneDrive/Desktop/reseach/cyberspace_dashboard/app.py`
+Total Lines: 1173
+Total Bytes: 46137
+Showing lines 1 to 800
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import re
+2: import subprocess
+3: import uuid
+4: import threading
+5: import json
+6: import time
+7: import os
+8: import requests
+9: import ssl
+10: import socket
+11: import sqlite3
+12: from functools import wraps
+13: from werkzeug.security import generate_password_hash, check_password_hash
+14: from dotenv import load_dotenv
+15: from flask import Flask, request, jsonify, render_template, Response, redirect, url_for, session
+16: from google import genai
+17: from google.genai import types
+18: 
+19: load_dotenv()
+20: 
+21: from parser import parse_nmap_xml
+22: from dns_auditor import audit_dns_security
+23: from infra_linter import lint_dockerfile
+24: from secret_scanner import scan_for_secrets
+25: from web_auditors import (
+26:     test_waf_and_rate_limit, check_subdomain_takeover,
+27:     analyze_csp, audit_cors, audit_cookies, scan_sri
+28: )
+29: from ai_auditors import (
+30:     scan_prompt_injection, scan_dom_xss,
+31:     generate_pre_commit_hook, check_security_txt, get_asvs_checklist
+32: )
+33: from final_auditors import (
+34:     audit_directory_browsing, simulate_input_payloads,
+35:     validate_ssrf_code, lint_bola, generate_sbom
+36: )
+37: from enterprise_auditors import (
+38:     detect_request_smuggling, scan_typosquatting,
+39:     test_open_redirect, audit_localstorage, harden_iac
+40: )
+41: from advanced_auditors import (
+42:     audit_prototype_pollution, audit_graphql_introspection,
+43:     audit_ssti, audit_data_exposure, get_csp_reporting_setup
+44: )
+45: from nessus_engine import run_nessus_scan
+46: from cloud_auditors import (
+47:     audit_xxe, audit_host_header, audit_deserialization,
+48:     audit_clickjacking, audit_cloud_metadata_ssrf
+49: )
+50: from exotic_auditors import (
+51:     audit_cswsh, audit_redos, audit_debug_endpoints,
+52:     audit_css_injection, audit_dns_rebinding
+53: )
+54: app = Flask(__name__)
+55: app.secret_key = os.environ.get('SECRET_KEY', 'cyberspace-defsoc-secret-2024')
+56: 
+57: active_games = {}
+58: scan_tasks = {}
+59: 
+60: def init_db():
+61:     conn = sqlite3.connect('users.db')
+62:     c = conn.cursor()
+63:     c.execute('''
+64:         CREATE TABLE IF NOT EXISTS users (
+65:             id INTEGER PRIMARY KEY AUTOINCREMENT,
+66:             username TEXT UNIQUE NOT NULL,
+67:             password_hash TEXT NOT NULL
+68:         )
+69:     ''')
+70:     try:
+71:         c.execute('ALTER TABLE users ADD COLUMN wins INTEGER DEFAULT 0')
+72:         c.execute('ALTER TABLE users ADD COLUMN matches_played INTEGER DEFAULT 0')
+73:         c.execute('ALTER TABLE users ADD COLUMN total_score INTEGER DEFAULT 0')
+74:     except sqlite3.OperationalError:
+75:         pass
+76:     c.execute('''
+77:         CREATE TABLE IF NOT EXISTS lobbies (
+78:             id TEXT PRIMARY KEY,
+79:             host_username TEXT NOT NULL,
+80:             max_players INTEGER NOT NULL,
+81:             status TEXT NOT NULL DEFAULT 'waiting',
+82:             scenario TEXT,
+83:             target_url TEXT,
+84:             red_invite_code TEXT,
+85:             blue_invite_code TEXT
+86:         )
+87:     ''')
+88:     c.execute('''
+89:         CREATE TABLE IF NOT EXISTS lobby_members (
+90:             lobby_id TEXT NOT NULL,
+91:             username TEXT NOT NULL,
+92:             team TEXT NOT NULL,
+93:             FOREIGN KEY(lobby_id) REFERENCES lobbies(id)
+94:         )
+95:     ''')
+96:     conn.commit()
+97:     conn.close()
+98: 
+99: init_db()
+100: 
+101: def login_required(f):
+102:     @wraps(f)
+103:     def decorated_function(*args, **kwargs):
+104:         if 'user' not in session:
+105:             return redirect(url_for('login'))
+106:         return f(*args, **kwargs)
+107:     return decorated_function
+108: 
+109: scan_tasks = {}
+110: active_games = {} # Stores real-time state: { lobby_id: { health: 100, rules: [], logs: [] } }
+111: 
+112: GEMINI_MODEL = "gemini-2.0-flash-lite"  # High-quota free-tier model
+113: 
+114: 
+115: def run_ai_audit(tool_name, input_data, expected_keys=None):
+116:     """
+117:     Core AI audit engine. Sends target/code to Gemini and returns structured JSON.
+118:     Each call is dynamic - results differ per unique input.
+119:     """
+120:     api_key = os.environ.get('GEMINI_API_KEY')
+121:     if not api_key:
+122:         return {'findings': [{'issue': 'GEMINI_API_KEY not set', 'detail': 'Add your API key to the .env file.', 'fix': ''}]}
+123:     try:
+124:         client = genai.Client(api_key=api_key)
+125: 
+126:         # Build the JSON schema for this tool type
+127:         if expected_keys == 'header':
+128:             schema = '{"grade":"A/B/C/D/F","missing_headers":["..."],"details":"full analysis","risk":"High/Medium/Low"}'
+129:         elif expected_keys == 'csp':
+130:             schema = '{"findings":[{"issue":"...","recommendation":"...","severity":"High/Medium/Low"}]}'
+131:         elif expected_keys == 'cookie':
+132:             schema = '{"findings":[{"issue":"...","fix":"...","severity":"High/Medium/Low"}]}'
+133:         elif expected_keys == 'proto':
+134:             schema = '{"findings":[{"severity":"High/Medium/Low","line":"...","issue":"...","code":"..."}],"fix":"..."}'
+135:         elif expected_keys == 'csp_report':
+136:             schema = '{"report_url":"/csp-report-ingest","setup_guide":"step by step instructions"}'
+137:         elif expected_keys == 'xxe':
+138:             schema = '{"findings":[{"line":"...","issue":"...","code":"..."}],"fix":"..."}'
+139:         else:
+140:             schema = '{"findings":[{"issue":"...","detail":"...","severity":"High/Medium/Low"}],"fix":"..."}'
+141: 
+142:         prompt = f"""You are an elite cybersecurity penetration tester performing a REAL-TIME {tool_name} audit.
+143: 
+144: Target/Input: {input_data}
+145: 
+146: Analyze this SPECIFIC target/input and provide ACCURATE, DYNAMIC findings based on what is realistic for "{input_data}".
+147: Do NOT give generic or template answers. Each target must produce unique, specific results.
+148: 
+149: Respond ONLY in valid JSON matching this schema exactly:
+150: {schema}"""
+151: 
+152:         response = client.models.generate_content(
+153:             model=GEMINI_MODEL,
+154:             contents=prompt,
+155:             config=types.GenerateContentConfig(response_mime_type='application/json')
+156:         )
+157:         return json.loads(response.text)
+158:     except Exception as e:
+159:         if expected_keys == 'header':
+160:             return {'grade': 'F', 'details': f'Error: {str(e)}', 'missing_headers': [], 'risk': 'Unknown'}
+161:         if expected_keys == 'csp_report':
+162:             return {'report_url': 'error', 'setup_guide': str(e)}
+163:         return {'findings': [{'issue': 'AI Engine Error', 'detail': str(e), 'fix': 'Check your GEMINI_API_KEY and network.'}]}
+164: 
+165: 
+166: def run_scan_task(task_id, target, depth):
+167:     if "Fast" in depth:
+168:         flags = ["-F", "-sV"]
+169:     elif "Full" in depth:
+170:         flags = ["-p-", "-sV"]
+171:     elif "Passive" in depth:
+172:         flags = ["-sn"]
+173:     else:
+174:         flags = ["-F", "-sV"]
+175:     
+176:     command = ["nmap"] + flags + ["-oX", "-", target]
+177:     
+178:     try:
+179:         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+180:         xml_output = []
+181:         
+182:         for line in process.stdout:
+183:             scan_tasks[task_id]['logs'].append(line)
+184:             xml_output.append(line)
+185:             
+186:         process.wait()
+187:         full_xml = "".join(xml_output)
+188:         
+189:         parsed_results = parse_nmap_xml(full_xml)
+190:         
+191:         if isinstance(parsed_results, dict) and "error" in parsed_results:
+192:             scan_tasks[task_id]["status"] = "error"
+193:             scan_tasks[task_id]["message"] = parsed_results["error"]
+194:         else:
+195:             scan_tasks[task_id]["status"] = "completed"
+196:             scan_tasks[task_id]["results"] = parsed_results
+197:             
+198:     except Exception as e:
+199:         scan_tasks[task_id]["status"] = "error"
+200:         scan_tasks[task_id]["message"] = str(e)
+201: 
+202: def run_code_scan_task(task_id, target_path):
+203:     try:
+204:         scan_tasks[task_id]['logs'].append("[+] Starting Bandit (SAST) scan...\n")
+205:         bandit_cmd = ["python", "-m", "bandit", "-r", target_path, "-f", "json"]
+206:         bandit_res = subprocess.run(bandit_cmd, capture_output=True, text=True, timeout=120)
+207:         
+208:         try:
+209:             bandit_data = json.loads(bandit_res.stdout)
+210:             scan_tasks[task_id]['logs'].append(f"[+] Bandit finished. Found {len(bandit_data.get('results', []))} issues.\n")
+211:         except json.JSONDecodeError:
+212:             bandit_data = {"error": "Failed to parse Bandit output", "raw": bandit_res.stdout}
+213: 
+214:         scan_tasks[task_id]['logs'].append("[+] Starting pip-audit (SCA) scan...\n")
+215:         pip_audit_cmd = ["python", "-m", "pip_audit", "-r", f"{target_path}/requirements.txt", "-f", "json"]
+216:         audit_res = subprocess.run(pip_audit_cmd, capture_output=True, text=True, timeout=120)
+217:         
+218:         try:
+219:             audit_data = json.loads(audit_res.stdout) if audit_res.stdout else []
+220:             scan_tasks[task_id]['logs'].append(f"[+] pip-audit finished.\n")
+221:         except json.JSONDecodeError:
+222:             audit_data = {"error": "Failed to parse pip-audit output", "raw": audit_res.stdout}
+223: 
+224:         scan_tasks[task_id]["status"] = "completed"
+225:         scan_tasks[task_id]["results"] = {
+226:             "type": "code",
+227:             "sast": bandit_data,
+228:             "sca": audit_data
+229:         }
+230:             
+231:     except subprocess.TimeoutExpired:
+232:         scan_tasks[task_id]["status"] = "error"
+233:         scan_tasks[task_id]["message"] = "Code scan timed out."
+234:     except Exception as e:
+235:         scan_tasks[task_id]["status"] = "error"
+236:         scan_tasks[task_id]["message"] = str(e)
+237: 
+238: def run_nessus_task(task_id, target):
+239:     try:
+240:         scan_tasks[task_id]['logs'].append(f"[+] Initializing AI Penetration Engine on {target}...\n")
+241:         scan_tasks[task_id]['logs'].append(f"[+] Launching 14 audit modules in parallel threads...\n")
+242: 
+243:         def log_callback(msg):
+244:             scan_tasks[task_id]['logs'].append(msg)
+245: 
+246:         # Call AI-powered engine with live log streaming
+247:         report = run_nessus_scan(target, log_callback=log_callback)
+248: 
+249:         scan_tasks[task_id]['logs'].append(f"[+] Penetration scan complete. Aggregate CVSS: {report['score']}\n")
+250:         scan_tasks[task_id]["status"] = "completed"
+251:         scan_tasks[task_id]["results"] = {"type": "nessus", "report": report}
+252:     except Exception as e:
+253:         scan_tasks[task_id]["status"] = "error"
+254:         scan_tasks[task_id]["message"] = str(e)
+255: 
+256: @app.route('/')
+257: def home():
+258:     if 'user' in session:
+259:         return redirect(url_for('dashboard'))
+260:     return redirect(url_for('login'))
+261: 
+262: @app.route('/dashboard')
+263: @login_required
+264: def dashboard():
+265:     conn = sqlite3.connect('users.db')
+266:     c = conn.cursor()
+267:     try:
+268:         c.execute("SELECT wins, matches_played, total_score FROM users WHERE username = ?", (session['user'],))
+269:         stats = c.fetchone()
+270:     except Exception:
+271:         stats = None
+272:     conn.close()
+273:     
+274:     try:
+275:         user_stats = {
+276:             "wins": stats[0] if stats and len(stats) > 0 else 0,
+277:             "matches_played": stats[1] if stats and len(stats) > 1 else 0,
+278:             "total_score": stats[2] if stats and len(stats) > 2 else 0
+279:         }
+280:     except Exception:
+281:         user_stats = {"wins": 0, "matches_played": 0, "total_score": 0}
+282: 
+283:     return render_template('index.html', user_stats=user_stats)
+284: 
+285: @app.route('/academy')
+286: @login_required
+287: def academy():
+288:     return render_template('academy.html')
+289: 
+290: @app.route('/practice')
+291: @login_required
+292: def practice():
+293:     return render_template('practice.html')
+294: 
+295: @app.route('/compete')
+296: @login_required
+297: def compete():
+298:     return render_template('compete.html')
+299: 
+300: @app.route('/api/lobby/create', methods=['POST'])
+301: @login_required
+302: def create_lobby():
+303:     data = request.json or {}
+304:     max_players = data.get('max_players', 2)
+305:     scenario = data.get('scenario', 'sqli_login')
+306:     host_team = data.get('host_team', 'blue')
+307:     
+308:     lobby_id = str(uuid.uuid4())[:8] # Short ID
+309:     red_invite_code = 'R-' + str(uuid.uuid4())[:6]
+310:     blue_invite_code = 'B-' + str(uuid.uuid4())[:6]
+311:     
+312:     conn = sqlite3.connect('users.db')
+313:     c = conn.cursor()
+314:     c.execute("INSERT INTO lobbies (id, host_username, max_players, scenario, red_invite_code, blue_invite_code) VALUES (?, ?, ?, ?, ?, ?)", 
+315:               (lobby_id, session['user'], max_players, scenario, red_invite_code, blue_invite_code))
+316:               
+317:     c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
+318:               (lobby_id, session['user'], host_team))
+319:     conn.commit()
+320:     conn.close()
+321:     
+322:     # Initialize Game Engine State
+323:     active_games[lobby_id] = {
+324:         'scenario': scenario,
+325:         'health': 100,
+326:         'rules': [], # Active WAF Regex rules
+327:         'logs': [],  # Traffic logs
+328:         'status': 'waiting', # 'waiting', 'active', 'red_wins', 'blue_wins'
+329:         'winner': None
+330:     }
+331:     
+332:     return jsonify({"success": True, "lobby_id": lobby_id, "red_invite_code": red_invite_code, "blue_invite_code": blue_invite_code})
+333: 
+334: @app.route('/api/lobby/join', methods=['POST'])
+335: @login_required
+336: def join_lobby():
+337:     data = request.json or {}
+338:     invite_code = data.get('invite_code')
+339:     
+340:     if not invite_code:
+341:         return jsonify({"success": False, "error": "Invite code required"}), 400
+342:         
+343:     conn = sqlite3.connect('users.db')
+344:     c = conn.cursor()
+345:     
+346:     # Check if lobby exists with this invite code
+347:     c.execute("SELECT id, max_players, red_invite_code, blue_invite_code FROM lobbies WHERE red_invite_code = ? OR blue_invite_code = ?", (invite_code, invite_code))
+348:     lobby = c.fetchone()
+349:     if not lobby:
+350:         conn.close()
+351:         return jsonify({"success": False, "error": "Invalid invite code"}), 404
+352:         
+353:     lobby_id = lobby[0]
+354:     team = 'red' if invite_code == lobby[2] else 'blue'
+355:     
+356:     # Check if user already in lobby
+357:     c.execute("SELECT team FROM lobby_members WHERE lobby_id = ? AND username = ?", (lobby_id, session['user']))
+358:     existing_member = c.fetchone()
+359:     if existing_member:
+360:         actual_team = existing_member[0]
+361:         conn.close()
+362:         if actual_team != team:
+363:             return jsonify({"success": False, "error": f"You are already in this match as the {actual_team.upper()} team. You cannot switch teams."}), 400
+364:         return jsonify({"success": True, "message": "Already in lobby", "lobby_id": lobby_id, "team": actual_team})
+365:         
+366:     c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
+367:               (lobby_id, session['user'], team))
+368:     conn.commit()
+369:     conn.close()
+370:     
+371:     return jsonify({"success": True, "lobby_id": lobby_id, "team": team})
+372: 
+373: @app.route('/api/lobby/demo-join', methods=['POST'])
+374: @login_required
+375: def demo_join_lobby():
+376:     """Special endpoint for solo demo mode: allows the same user to view
+377:     the game as either team perspective without strict team membership checks."""
+378:     data = request.json or {}
+379:     lobby_id = data.get('lobby_id')
+380:     team = data.get('team')  # 'red' or 'blue'
+381: 
+382:     if not lobby_id or not team:
+383:         return jsonify({"success": False, "error": "Missing lobby_id or team"}), 400
+384: 
+385:     game = active_games.get(lobby_id)
+386:     if not game:
+387:         return jsonify({"success": False, "error": "Lobby not found"}), 404
+388: 
+389:     # In demo mode we allow same user to represent either team view
+390:     return jsonify({"success": True, "lobby_id": lobby_id, "team": team, "demo": True})
+391: 
+392: @app.route('/api/lobby/status/<lobby_id>', methods=['GET'])
+393: @login_required
+394: def get_lobby_status(lobby_id):
+395:     conn = sqlite3.connect('users.db')
+396:     c = conn.cursor()
+397:     
+398:     c.execute("SELECT host_username, max_players, status, target_url, red_invite_code, blue_invite_code, scenario FROM lobbies WHERE id = ?", (lobby_id,))
+399:     lobby = c.fetchone()
+400:     if not lobby:
+401:         conn.close()
+402:         return jsonify({"success": False, "error": "Lobby not found"}), 404
+403:         
+404:     c.execute("SELECT username, team FROM lobby_members WHERE lobby_id = ?", (lobby_id,))
+405:     members = c.fetchall()
+406:     conn.close()
+407:     
+408:     red_team = [m[0] for m in members if m[1] == 'red']
+409:     blue_team = [m[0] for m in members if m[1] == 'blue']
+410:     
+411:     return jsonify({
+412:         "success": True,
+413:         "id": lobby_id,
+414:         "host": lobby[0],
+415:         "max_players": lobby[1],
+416:         "status": lobby[2],
+417:         "target_url": lobby[3],
+418:         "red_invite_code": lobby[4],
+419:         "blue_invite_code": lobby[5],
+420:         "scenario": lobby[6],
+421:         "members": {
+422:             "red": red_team,
+423:             "blue": blue_team
+424:         }
+425:     })
+426: 
+427: @app.route('/api/game/attack', methods=['POST'])
+428: @login_required
+429: def game_attack():
+430:     data = request.json or {}
+431:     lobby_id = data.get('lobby_id')
+432:     payload = data.get('payload', '').strip()
+433:     
+434:     if not lobby_id or not payload:
+435:          return jsonify({"success": False, "error": "Missing parameters"}), 400
+436:          
+437:     game = active_games.get(lobby_id)
+438:     if not game:
+439:          return jsonify({"success": False, "error": "Game not found or inactive"}), 404
+440:          
+441:     if game['status'] != 'active':
+442:          return jsonify({"success": False, "error": "Game is not active"}), 400
+443:          
+444:     # 1. WAF Evaluation (Blue Team Defense)
+445:     blocked = False
+446:     for rule in game['rules']:
+447:         try:
+448:             if re.search(rule, payload, re.IGNORECASE):
+449:                 blocked = True
+450:                 break
+451:         except re.error:
+452:             pass # Ignore invalid regex rules from users
+453: 
+454:     timestamp = time.strftime('%H:%M:%S')
+455:     
+456:     if blocked:
+457:         log_entry = f"<span class='text-red-500'>[{timestamp}] [BLOCKED] GET /?q={payload} (WAF Hit)</span>"
+458:         game['logs'].append(log_entry)
+459:         if len(game['logs']) > 50: game['logs'].pop(0)
+460:         return jsonify({"success": False, "error": "Payload blocked by WAF."})
+461:         
+462:     # 2. Scenario Evaluation (Red Team Attack)
+463:     success = False
+464:     message = "Payload executed but did not exploit the vulnerability."
+465:     
+466:     log_entry = f"<span class='text-green-500'>[{timestamp}] [200 OK] GET /?q={payload}</span>"
+467:     game['logs'].append(log_entry)
+468:     if len(game['logs']) > 50: game['logs'].pop(0)
+469: 
+470:     if game['scenario'] == 'sqli_login':
+471:         # Simple SQLi detection
+472:         if any(kw in payload.upper() for kw in ['OR 1=1', 'UNION SELECT', 'DROP TABLE']):
+473:             success = True
+474:             message = "CRITICAL HIT: SQL Injection successful. Flag captured!"
+475:     elif game['scenario'] in ['cmd_injection', 'cmd_ping']:
+476:         # Simple Command Injection detection
+477:         if any(kw in payload for kw in [';', '&&', '|', '`']):
+478:             success = True
+479:             message = "CRITICAL HIT: Remote Code Execution successful. Flag captured!"
+480:     elif game['scenario'] == 'xss_search':
+481:         # Simple XSS detection
+482:         if any(kw in payload.lower() for kw in ['<script>', 'onerror=', 'javascript:']):
+483:             success = True
+484:             message = "CRITICAL HIT: Cross-Site Scripting successful. Session hijacked!"
+485:     elif game['scenario'] == 'lfi_traversal':
+486:         # Simple LFI detection
+487:         if any(kw in payload.lower() for kw in ['../', '..\\', '/etc/passwd', 'c:\\windows']):
+488:             success = True
+489:             message = "CRITICAL HIT: Local File Inclusion successful. Sensitive data exfiltrated!"
+490:     elif game['scenario'] == 'ssti_jinja':
+491:         # Simple SSTI detection
+492:         if any(kw in payload for kw in ['{{', '}}', '{%', '%}']):
+493:             success = True
+494:             message = "CRITICAL HIT: Server-Side Template Injection successful. Remote code executed via template!"
+495: 
+496:     if success:
+497:         game['health'] = 0
+498:         game['status'] = 'red_wins'
+499:         game['winner'] = 'Red Team'
+500:         
+501:         try:
+502:             conn = sqlite3.connect('users.db')
+503:             c = conn.cursor()
+504:             c.execute("UPDATE users SET wins = wins + 1, matches_played = matches_played + 1, total_score = total_score + 100 WHERE username = ?", (session['user'],))
+505:             conn.commit()
+506:             conn.close()
+507:         except Exception as e:
+508:             print("Failed to update scores:", e)
+509: 
+510:     return jsonify({"success": success, "message": message})
+511: 
+512: @app.route('/api/game/defend', methods=['POST'])
+513: @login_required
+514: def game_defend():
+515:     data = request.json or {}
+516:     lobby_id = data.get('lobby_id')
+517:     rule = data.get('rule', '').strip()
+518:     
+519:     if not lobby_id or not rule:
+520:          return jsonify({"success": False, "error": "Missing parameters"}), 400
+521:          
+522:     game = active_games.get(lobby_id)
+523:     if not game:
+524:          return jsonify({"success": False, "error": "Game not found or inactive"}), 404
+525: 
+526:     try:
+527:         re.compile(rule) # Validate regex
+528:     except re.error:
+529:         return jsonify({"success": False, "error": "Invalid Regex rule."}), 400
+530: 
+531:     if rule not in game['rules']:
+532:         game['rules'].append(rule)
+533:         timestamp = time.strftime('%H:%M:%S')
+534:         game['logs'].append(f"<span class='text-blue-400 font-bold'>[{timestamp}] [WAF UPDATED] Rule added: {rule}</span>")
+535:          
+536:     return jsonify({"success": True, "message": f"Defense rule '{rule}' applied."})
+537: 
+538: @app.route('/api/game/state/<lobby_id>', methods=['GET'])
+539: @login_required
+540: def game_state(lobby_id):
+541:     game = active_games.get(lobby_id)
+542:     if not game:
+543:          # Check if we should initialize it as active (Host hit deploy)
+544:          conn = sqlite3.connect('users.db')
+545:          c = conn.cursor()
+546:          c.execute("SELECT status FROM lobbies WHERE id = ?", (lobby_id,))
+547:          lobby = c.fetchone()
+548:          conn.close()
+549:          
+550:          if lobby and lobby[0] == 'active' and lobby_id in active_games:
+551:              active_games[lobby_id]['status'] = 'active'
+552:          
+553:          if lobby_id not in active_games:
+554:              return jsonify({"success": False, "error": "Game not initialized"}), 404
+555:              
+556:          game = active_games[lobby_id]
+557: 
+558:     return jsonify({
+559:         "success": True,
+560:         "health": game['health'],
+561:         "status": game['status'],
+562:         "logs": game['logs'][-20:], # Send last 20 logs
+563:         "winner": game['winner']
+564:     })
+565: 
+566: @app.route('/api/lobby/start', methods=['POST'])
+567: @login_required
+568: def start_lobby():
+569:     data = request.json or {}
+570:     lobby_id = data.get('lobby_id')
+571:     
+572:     if not lobby_id:
+573:          return jsonify({"success": False, "error": "Missing parameters"}), 400
+574:          
+575:     conn = sqlite3.connect('users.db')
+576:     c = conn.cursor()
+577:     # Ensure host is starting it
+578:     c.execute("UPDATE lobbies SET status = 'active' WHERE id = ? AND host_username = ?", (lobby_id, session['user']))
+579:     conn.commit()
+580:     conn.close()
+581:     
+582:     if lobby_id in active_games:
+583:         active_games[lobby_id]['status'] = 'active'
+584:         
+585:     return jsonify({"success": True})
+586: 
+587: @app.route('/scoreboard')
+588: @login_required
+589: def scoreboard():
+590:     conn = sqlite3.connect('users.db')
+591:     c = conn.cursor()
+592:     try:
+593:         c.execute("SELECT username, wins, matches_played, total_score FROM users ORDER BY total_score DESC LIMIT 20")
+594:         leaders = c.fetchall()
+595:     except sqlite3.OperationalError:
+596:         leaders = []
+597:     conn.close()
+598:     return render_template('scoreboard.html', leaders=leaders)
+599: 
+600: @app.route('/learn')
+601: @login_required
+602: def learn():
+603:     return render_template('learn.html')
+604: 
+605: @app.route('/login')
+606: def login():
+607:     if 'user' in session:
+608:         return redirect(url_for('dashboard'))
+609:     return render_template('login.html')
+610: 
+611: @app.route('/antigravity')
+612: @login_required
+613: def antigravity_page():
+614:     return render_template('antigravity.html')
+615: 
+616: @app.route('/auth/register', methods=['POST'])
+617: def auth_register():
+618:     data = request.get_json()
+619:     username = data.get('username')
+620:     password = data.get('password')
+621:     if not username or not password:
+622:         return jsonify({"success": False, "error": "Missing credentials"}), 400
+623:     
+624:     conn = sqlite3.connect('users.db')
+625:     c = conn.cursor()
+626:     try:
+627:         c.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", 
+628:                   (username, generate_password_hash(password)))
+629:         conn.commit()
+630:         session['user'] = username
+631:         return jsonify({"success": True, "redirect": url_for('dashboard')})
+632:     except sqlite3.IntegrityError:
+633:         return jsonify({"success": False, "error": "Username already taken"}), 400
+634:     finally:
+635:         conn.close()
+636: 
+637: @app.route('/auth/login', methods=['POST'])
+638: def auth_login():
+639:     data = request.get_json()
+640:     username = data.get('username')
+641:     password = data.get('password')
+642:     
+643:     conn = sqlite3.connect('users.db')
+644:     c = conn.cursor()
+645:     c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+646:     row = c.fetchone()
+647:     conn.close()
+648:     
+649:     if row and check_password_hash(row[0], password):
+650:         session['user'] = username
+651:         return jsonify({"success": True, "redirect": url_for('dashboard')})
+652:     
+653:     return jsonify({"success": False, "error": "Invalid username or password"}), 401
+654: 
+655: @app.route('/auth/google', methods=['POST'])
+656: def auth_google():
+657:     # Mock Google Login Flow
+658:     session['user'] = "google_user@gmail.com"
+659:     return jsonify({"success": True, "redirect": url_for('dashboard')})
+660: 
+661: @app.route('/auth/logout')
+662: def auth_logout():
+663:     session.pop('user', None)
+664:     return redirect(url_for('login'))
+665: 
+666: @app.route('/api/scan', methods=['POST'])
+667: def handle_scan():
+668:     data = request.get_json()
+669:     target = data.get("target", "").strip()
+670:     depth = data.get("depth", "Fast")
+671: 
+672:     if not re.match(DOMAIN_OR_IP_REGEX, target):
+673:         return jsonify({"error": "Invalid target format."}), 400
+674: 
+675:     forbidden_targets = ["localhost", "127.0.0.1", "0.0.0.0"]
+676:     if target in forbidden_targets:
+677:         return jsonify({"error": "Scanning local system addresses is restricted."}), 403
+678: 
+679:     task_id = str(uuid.uuid4())
+680:     scan_tasks[task_id] = {"status": "running", "logs": []}
+681:     
+682:     thread = threading.Thread(target=run_scan_task, args=(task_id, target, depth))
+683:     thread.start()
+684: 
+685:     return jsonify({"task_id": task_id, "status": "running"})
+686: 
+687: @app.route('/api/scan/code', methods=['POST'])
+688: def handle_code_scan():
+689:     data = request.get_json()
+690:     target = data.get("target", "").strip()
+691: 
+692:     if not target or target == "/":
+693:         return jsonify({"error": "Invalid target path."}), 400
+694: 
+695:     task_id = str(uuid.uuid4())
+696:     scan_tasks[task_id] = {"status": "running", "logs": []}
+697:     
+698:     thread = threading.Thread(target=run_code_scan_task, args=(task_id, target))
+699:     thread.start()
+700: 
+701:     return jsonify({"task_id": task_id, "status": "running"})
+702: 
+703: @app.route('/api/scan/nessus', methods=['POST'])
+704: def start_nessus_scan():
+705:     target = (request.json or {}).get('target', '')
+706:     if not target:
+707:         return jsonify({"error": "No target specified"}), 400
+708: 
+709:     task_id = str(uuid.uuid4())
+710:     scan_tasks[task_id] = {
+711:         "status": "running",
+712:         "target": target,
+713:         "logs": [],
+714:         "results": None
+715:     }
+716: 
+717:     thread = threading.Thread(target=run_nessus_task, args=(task_id, target))
+718:     thread.start()
+719: 
+720:     return jsonify({"task_id": task_id, "status": "running"})
+721: 
+722: @app.route('/api/scan/<task_id>', methods=['GET'])
+723: def get_scan_status(task_id):
+724:     task = scan_tasks.get(task_id)
+725:     if not task:
+726:         return jsonify({"error": "Task not found"}), 404
+727:     return jsonify(task)
+728: 
+729: @app.route('/api/stream/<task_id>')
+730: def stream_logs(task_id):
+731:     def generate():
+732:         last_idx = 0
+733:         while True:
+734:             task = scan_tasks.get(task_id)
+735:             if not task:
+736:                 break
+737:             logs = task.get('logs', [])
+738:             if last_idx < len(logs):
+739:                 for line in logs[last_idx:]:
+740:                     yield f"data: {line}\n\n"
+741:                 last_idx = len(logs)
+742:             if task.get('status') in ['completed', 'error']:
+743:                 yield "event: end\ndata: \n\n"
+744:                 break
+745:             time.sleep(0.5)
+746:     return Response(generate(), mimetype='text/event-stream')
+747: 
+748: @app.route('/api/audit/headers', methods=['POST'])
+749: def audit_headers():
+750:     data = request.json or {}
+751:     tgt = data.get('target', data.get('content', ''))
+752:     return jsonify(run_ai_audit("HTTP Header Grading", tgt, "header"))
+753: 
+754: @app.route('/api/dns-audit', methods=['POST'])
+755: def handle_dns_audit():
+756:     data = request.get_json() or {}
+757:     domain = data.get("domain", "").strip().lower()
+758: 
+759:     if not domain:
+760:         return jsonify({"error": "Missing domain parameter."}), 400
+761: 
+762:     forbidden_domains = ["localhost", "local", "invalid", "test"]
+763:     if any(domain.endswith(f".{ext}") or domain == ext for ext in forbidden_domains):
+764:         return jsonify({"error": "Auditing internal or local domains is restricted."}), 403
+765: 
+766:     try:
+767:         audit_results = audit_dns_security(domain)
+768:         return jsonify(audit_results), 200
+769:     except Exception as e:
+770:         return jsonify({"error": str(e)}), 500
+771: 
+772: @app.route('/api/audit/infra', methods=['POST'])
+773: def audit_infra():
+774:     data = request.get_json() or {}
+775:     content = data.get("content", "")
+776:     if not content:
+777:         return jsonify({"error": "No content provided."}), 400
+778:     return jsonify(lint_dockerfile(content))
+779: 
+780: @app.route('/api/audit/secrets', methods=['POST'])
+781: def audit_secrets():
+782:     data = request.get_json() or {}
+783:     content = data.get("content", "")
+784:     if not content:
+785:         return jsonify({"error": "No content provided."}), 400
+786:     return jsonify(scan_for_secrets(content))
+787: 
+788: @app.route('/api/audit/exposed-files', methods=['POST'])
+789: def audit_exposed_files():
+790:     data = request.get_json() or {}
+791:     target = data.get("target", "").strip()
+792:     if not target.startswith("http"):
+793:         target = "http://" + target
+794:     
+795:     files_to_check = [".git/config", ".env", "backup.sql", "wp-config.php.bak"]
+796:     results = {"target": target, "exposed": []}
+797:     
+798:     for f in files_to_check:
+799:         try:
+800:             url = f"{target.rstrip('/')}/{f}"
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

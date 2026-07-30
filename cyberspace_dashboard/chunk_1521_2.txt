@@ -1,0 +1,4 @@
+            if (scenario === 'custom_ctf' && (!customDesc || !customFlag)) {
+                showError('Please provide both Target Details and Exploit Payload.');
+                return;
+            }

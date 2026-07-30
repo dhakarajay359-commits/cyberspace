@@ -1,0 +1,5 @@
+            <div id="dynamic-map-content">
+                <!-- Filled by JS showHowToPlayModal() -->
+            </div>
+        </div>
+    </div>

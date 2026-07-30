@@ -1,0 +1,4 @@
+                <div class="flex gap-4">
+                    <button onclick="showHowToPlayModal()" class="bg-indigo-900/40 border border-indigo-500 text-indigo-300 text-sm py-3 px-8 rounded-lg font-bold mono hover:bg-indigo-800/60 transition flex items-center gap-2"><span class="mi">map</span> HOW IT WORKS</button>
+                    <button onclick="startMatch()" class="btn-neon text-lg py-3 px-12 rounded-lg font-black mono animate-pulse">DEPLOY</button>
+                </div>

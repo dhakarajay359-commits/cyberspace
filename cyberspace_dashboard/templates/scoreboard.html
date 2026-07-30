@@ -1,0 +1,64 @@
+{% set active_page = "scoreboard" %}
+{% extends "base.html" %}
+
+{% block extra_head %}
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glow-text { text-shadow: 0 0 10px rgba(16,185,129,0.5); }
+        .cyber-table th { border-bottom: 2px solid rgba(16,185,129,0.3); }
+        .cyber-row:hover { background: rgba(16,185,129,0.05); }
+        
+        .rank-1 { color: #fbbf24; text-shadow: 0 0 15px rgba(251,191,36,0.6); }
+        .rank-2 { color: #e2e8f0; text-shadow: 0 0 15px rgba(226,232,240,0.6); }
+        .rank-3 { color: #d97706; text-shadow: 0 0 15px rgba(217,119,6,0.6); }
+    </style>
+{% endblock %}
+
+{% block content %}
+<main class="max-w-5xl mx-auto p-6 space-y-6 mt-10">
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mb-2">GLOBAL LEADERBOARD</h1>
+        <p class="text-slate-400 mono text-sm">// Top Operatives by Total Score</p>
+    </div>
+
+    <div class="bg-slate-950/80 border border-emerald-500/30 rounded-xl shadow-[0_0_30px_rgba(16,185,129,0.15)] overflow-hidden backdrop-blur-md">
+        <table class="w-full text-left cyber-table">
+            <thead>
+                <tr class="bg-black/50 text-slate-400 text-xs uppercase tracking-widest mono">
+                    <th class="p-4 pl-6 w-20">Rank</th>
+                    <th class="p-4">Operative</th>
+                    <th class="p-4 text-center">Matches</th>
+                    <th class="p-4 text-center">Wins</th>
+                    <th class="p-4 pr-6 text-right">Total Score</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm mono text-slate-200">
+                {% for row in leaders %}
+                <tr class="cyber-row border-b border-slate-800/50 transition">
+                    <td class="p-4 pl-6 font-bold 
+                        {% if loop.index == 1 %}rank-1 text-2xl
+                        {% elif loop.index == 2 %}rank-2 text-xl
+                        {% elif loop.index == 3 %}rank-3 text-lg
+                        {% else %}text-slate-500
+                        {% endif %}">
+                        #{{ loop.index }}
+                    </td>
+                    <td class="p-4 font-bold tracking-wide 
+                        {% if loop.index == 1 %}text-emerald-400 glow-text{% endif %}">
+                        {{ row[0] }}
+                    </td>
+                    <td class="p-4 text-center text-slate-400">{{ row[2] }}</td>
+                    <td class="p-4 text-center text-emerald-500 font-bold">{{ row[1] }}</td>
+                    <td class="p-4 pr-6 text-right font-black text-emerald-400 text-lg">{{ row[3] }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="p-8 text-center text-slate-500 mono">No operatives found in the database.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</main>
+{% endblock %}

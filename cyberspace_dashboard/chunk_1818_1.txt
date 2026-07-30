@@ -1,0 +1,34 @@
+        function deployCustomRule() {
+            const input = document.getElementById('blue-custom-rule');
+            const rule = input.value.trim();
+            if (!rule) return;
+            input.value = '';
+            deployDefense(rule);
+        }
+
+        function decodeTraffic() {
+            const input = document.getElementById('blue-decoder-input').value.trim();
+            const output = document.getElementById('blue-decoder-output');
+            if (!input) {
+                output.textContent = '';
+                return;
+            }
+            try {
+                let b64 = input;
+                // If they copy-pasted the whole line, extract just the b64 part
+                if (b64.includes('?q=')) {
+                    b64 = b64.split('?q=')[1];
+                    if (b64.includes(' ')) b64 = b64.split(' ')[0];
+                }
+                const decoded = atob(b64);
+                output.textContent = decoded;
+                output.classList.remove('text-red-400');
+                output.classList.add('text-emerald-400');
+            } catch (e) {
+                output.textContent = 'ERROR: Invalid Base64 String';
+                output.classList.remove('text-emerald-400');
+                output.classList.add('text-red-400');
+            }
+        }
+        
+        function renderTargetPreview() {

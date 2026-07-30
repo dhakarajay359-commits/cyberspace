@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberspace | Compete & CTF</title>
+    <meta name="description" content="Compete in live CTF tournaments, climb the global leaderboard, and battle hackers worldwide.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #050a0f; color: #e2e8f0; overflow-x: hidden; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Background Matrix */
+        #matrix-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; opacity: 0.8; pointer-events: none; }
+        .bg-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at center, transparent 0%, #050a0f 80%); pointer-events: none; }
+        
+        /* Cyber Glitch Effect */
+        .glitch-wrapper { position: relative; display: inline-block; }
+        .glitch-text { color: #fff; font-weight: 800; font-size: 2.5rem; text-transform: uppercase; position: relative; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+        .glitch-text::before, .glitch-text::after {
+            content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #050a0f; clip: rect(0, 0, 0, 0); 
+        }
+        .glitch-text::before {
+            left: -2px; text-shadow: -2px 0 #ff00c1;
+            animation: glitch-anim-1 2s infinite linear alternate-reverse;
+        }
+        .glitch-text::after {
+            left: 2px; text-shadow: -2px 0 #00fff9;
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim-1 {
+            0% { clip: rect(42px, 9999px, 44px, 0); }
+            20% { clip: rect(12px, 9999px, 59px, 0); }
+            40% { clip: rect(73px, 9999px, 54px, 0); }
+            60% { clip: rect(14px, 9999px, 89px, 0); }
+            80% { clip: rect(81px, 9999px, 32px, 0); }
+            100% { clip: rect(32px, 9999px, 98px, 0); }
+        }
+        @keyframes glitch-anim-2 {
+            0% { clip: rect(65px, 9999px, 100px, 0); }
+            20% { clip: rect(4px, 9999px, 63px, 0); }
+            40% { clip: rect(98px, 9999px, 24px, 0); }
+            60% { clip: rect(33px, 9999px, 86px, 0); }
+            80% { clip: rect(15px, 9999px, 5px, 0); }
+            100% { clip: rect(91px, 9999px, 42px, 0); }
+        }
+
+        /* Nav Sidebar */
+        .sidebar { width: 80px; transition: width 0.3s ease; }
+        .sidebar:hover { width: 220px; }
+        .nav-item { white-space: nowrap; overflow: hidden; opacity: 0; transition: opacity 0.3s; margin-left: 12px; }
+        .sidebar:hover .nav-item { opacity: 1; }
+
+        /* Cyber Glows */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(16, 185, 129, 0.05);
+            border-radius: 12px;
+        }
+        .glow-green { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); border-color: rgba(16, 185, 129, 0.6); }
+        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.6); }
+        
+        /* Radar Sweep */
+        .radar-box { position: relative; overflow: hidden; border-radius: 50%; width: 120px; height: 120px; border: 2px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05); }
+        .radar-box::after {
+            content: ''; position: absolute; top: 50%; left: 50%; width: 50%; height: 50%;
+            transform-origin: top left; background: linear-gradient(45deg, rgba(16, 185, 129, 0.8) 0%, transparent 50%);
+            animation: radar-spin 2s linear infinite;
+        }
+        @keyframes radar-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Neon Button */
+        .btn-neon {
+            background: transparent; color: #10b981; border: 1px solid #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3), inset 0 0 10px rgba(16, 185, 129, 0.3);
+            transition: all 0.2s ease; text-transform: uppercase; letter-spacing: 2px;
+        }
+        .btn-neon:hover {
+            background: #10b981; color: #000;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.8), inset 0 0 20px rgba(16, 185, 129, 0.8);
+        }
+
+        /* Pulse */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .pulse-live { animation: pulse-ring 2s infinite; border-radius: 50%; width: 12px; height: 12px; background: #ef4444; display: inline-block; margin-right: 8px; }
+
+        /* Table rows hover */
+        tr.hacker-row:hover { background: rgba(16, 185, 129, 0.1); cursor: crosshair; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm">
+
+    <canvas id="matrix-bg"></canvas>
+    <div class="bg-overlay"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar h-full bg-[#03060a] border-r border-emerald-900/40 flex flex-col items-center py-6 fixed left-0 top-0 z-50">
+        <div class="w-10 h-10 bg-emerald-500/20 rounded-xl border border-emerald-500/50 flex items-center justify-center mb-10 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        </div>
+
+        <nav class="flex flex-col gap-6 w-full px-4">
+            <a href="/dashboard" class="flex items-center text-slate-400 hover:text-emerald-400 transition group p-2 rounded hover:bg-emerald-500/10">
+                <span class="text-xl w-6 text-center">🛡️</span>
+                <span class="nav-item font-semibold">Dashboard</span>
+            </a>
+            <a href="/academy" class="flex items-center text-slate-400 hover:text-emerald-400 transition group p-2 rounded hover:bg-emerald-500/10">
+                <span class="text-xl w-6 text-center">📚</span>
+                <span class="nav-item font-semibold">Academy</span>
+            </a>
+            <a href="/practice" class="flex items-center text-slate-400 hover:text-emerald-400 transition group p-2 rounded hover:bg-emerald-500/10">
+                <span class="text-xl w-6 text-center">💻</span>
+                <span class="nav-item font-semibold">Practice</span>
+            </a>
+            <a href="/compete" class="flex items-center text-emerald-400 group p-2 rounded bg-emerald-500/20 border border-emerald-500/30">
+                <span class="text-xl w-6 text-center">🏆</span>
+                <span class="nav-item font-bold">Compete</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="ml-[80px] flex-1 h-full overflow-y-auto p-8 z-10 relative">
+        
+        <header class="mb-10 flex justify-between items-end">
+            <div class="glitch-wrapper">
+                <h1 class="glitch-text mono" data-text="GLOBAL BATTLEGROUND">GLOBAL BATTLEGROUND</h1>
+                <p class="text-emerald-400/80 mono text-xs mt-2 uppercase tracking-[0.3em]">Hacker Ranking & Live CTF Matchmaking</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="glass-panel px-4 py-2 flex items-center gap-3">
+                    <span class="text-xs text-slate-400">YOUR RANK:</span>
+                    <span class="text-emerald-400 font-black text-lg mono">#1,337</span>
+                </div>
+                <div class="glass-panel px-4 py-2 flex items-center gap-3">
+                    <span class="text-xs text-slate-400">RATING:</span>
+                    <span class="text-amber-400 font-bold mono">2450 ELO</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-12 gap-8">
+            
+            <!-- LEFT COLUMN (Leaderboard & Matches) -->
+            <div class="col-span-8 flex flex-col gap-8">
+                
+                <!-- Matchmaking Card -->
+                <section class="glass-panel p-6 glow-green relative overflow-hidden group">
+                    <div class="absolute -right-10 -top-10 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <svg class="w-64 h-64 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13h-13L12 6.5z"/></svg>
+                    </div>
+                    <div class="flex items-center justify-between z-10 relative">
+                        <div>
+                            <h2 class="text-2xl font-black text-white mb-2 flex items-center">
+                                <span class="text-emerald-400 mr-2 text-3xl">⚔️</span> 1V1 KING OF THE HILL
+                            </h2>
+                            <p class="text-slate-400 mb-6 text-xs w-3/4 leading-relaxed">Enter the arena. Face off against hackers of similar skill level in real-time machine exploitation. First to capture the root flag wins ELO rating and bounty shards.</p>
+                            
+                            <div class="flex gap-4">
+                                <button class="btn-neon font-bold py-3 px-8 rounded-lg mono text-sm flex items-center gap-2">
+                                    <span class="radar-box !w-4 !h-4 !border"></span> FIND MATCH
+                                </button>
+                                <button class="bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold py-3 px-6 rounded-lg mono text-sm border border-slate-700 transition">
+                                    CUSTOM LOBBY
+                                </button>
+                            </div>
+                        </div>
+                        <div class="hidden md:flex flex-col items-center justify-center mr-8">
+                            <div class="radar-box mb-3"></div>
+                            <span class="mono text-[10px] text-emerald-400 tracking-widest">SCANNING ARENA...</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Global Leaderboard -->
+                <section class="glass-panel p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold text-white mono uppercase tracking-wider">Top 10 Global Hackers</h3>
+                        <div class="flex gap-2">
+                            <button class="bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded text-xs mono font-bold border border-emerald-500/30">GLOBAL</button>
+                            <button class="bg-transparent text-slate-500 hover:text-slate-300 px-3 py-1 rounded text-xs mono font-bold border border-transparent hover:border-slate-700 transition">COUNTRY</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-[10px] text-slate-500 mono uppercase border-b border-slate-800">
+                                    <th class="pb-3 px-4">Rank</th>
+                                    <th class="pb-3 px-4">Hacker</th>
+                                    <th class="pb-3 px-4">Title</th>
+                                    <th class="pb-3 px-4">Elo Rating</th>
+                                    <th class="pb-3 px-4 text-right">Win Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm font-semibold text-slate-300">
+                                <tr class="border-b border-slate-800/50 hacker-row">
+                                    <td class="py-3 px-4 text-amber-400 mono font-black">#1</td>
+                                    <td class="py-3 px-4 text-white flex items-center gap-2"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=ZeroDay" class="w-6 h-6 rounded-full bg-slate-800"> ZeroDayNinja</td>
+                                    <td class="py-3 px-4 text-purple-400 text-xs">Omniscient</td>
+                                    <td class="py-3 px-4 mono text-emerald-400">3,142</td>
+                                    <td class="py-3 px-4 text-right text-emerald-500">89%</td>
+                                </tr>
+                                <tr class="border-b border-slate-800/50 hacker-row">
+                                    <td class="py-3 px-4 text-slate-300 mono font-bold">#2</td>
+                                    <td class="py-3 px-4 text-white flex items-center gap-2"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Byte" class="w-6 h-6 rounded-full bg-slate-800"> BytePhantom</td>
+                                    <td class="py-3 px-4 text-emerald-400 text-xs">Elite Hacker</td>
+                                    <td class="py-3 px-4 mono text-emerald-400">3,088</td>
+                                    <td class="py-3 px-4 text-right text-emerald-500">84%</td>
+                                </tr>
+                                <tr class="border-b border-slate-800/50 hacker-row">
+                                    <td class="py-3 px-4 text-orange-400 mono font-bold">#3</td>
+                                    <td class="py-3 px-4 text-white flex items-center gap-2"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Ghost" class="w-6 h-6 rounded-full bg-slate-800"> GhostInTheShell</td>
+                                    <td class="py-3 px-4 text-emerald-400 text-xs">Elite Hacker</td>
+                                    <td class="py-3 px-4 mono text-emerald-400">2,995</td>
+                                    <td class="py-3 px-4 text-right text-emerald-500">81%</td>
+                                </tr>
+                                <tr class="border-b border-slate-800/50 hacker-row">
+                                    <td class="py-3 px-4 text-slate-500 mono font-bold">#4</td>
+                                    <td class="py-3 px-4 text-white flex items-center gap-2"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Crash" class="w-6 h-6 rounded-full bg-slate-800"> CrashOverride</td>
+                                    <td class="py-3 px-4 text-blue-400 text-xs">Pro Hacker</td>
+                                    <td class="py-3 px-4 mono text-emerald-400">2,870</td>
+                                    <td class="py-3 px-4 text-right text-emerald-500">76%</td>
+                                </tr>
+                                <tr class="hacker-row">
+                                    <td class="py-3 px-4 text-slate-500 mono font-bold">#5</td>
+                                    <td class="py-3 px-4 text-white flex items-center gap-2"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Viper" class="w-6 h-6 rounded-full bg-slate-800"> ViperSec</td>
+                                    <td class="py-3 px-4 text-blue-400 text-xs">Pro Hacker</td>
+                                    <td class="py-3 px-4 mono text-emerald-400">2,812</td>
+                                    <td class="py-3 px-4 text-right text-emerald-500">74%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- RIGHT COLUMN (Events & Feed) -->
+            <div class="col-span-4 flex flex-col gap-8">
+                
+                <!-- Live Tournaments -->
+                <section class="glass-panel p-6 glow-red border-t-2 border-t-red-500">
+                    <h3 class="text-white font-bold mb-4 flex items-center">
+                        <span class="pulse-live"></span> ACTIVE TOURNAMENTS
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-black/50 border border-slate-800 p-4 rounded-lg hover:border-red-500/50 transition cursor-pointer group">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="text-sm font-bold text-red-400 group-hover:text-red-300">DEFCON Qualifiers 2026</h4>
+                                <span class="bg-red-900/30 text-red-400 text-[9px] px-2 py-0.5 rounded uppercase font-black mono border border-red-500/30">Jeopardy</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-3">Join the world's most prestigious CTF qualifier. Max team size: 4.</p>
+                            <div class="flex justify-between items-center text-[10px] mono">
+                                <span class="text-slate-500">Ends in: <span class="text-white">14h 22m</span></span>
+                                <span class="text-emerald-400">1,204 Teams</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-black/50 border border-slate-800 p-4 rounded-lg hover:border-emerald-500/50 transition cursor-pointer group">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="text-sm font-bold text-emerald-400 group-hover:text-emerald-300">CyberSec Weekly Blitz</h4>
+                                <span class="bg-emerald-900/30 text-emerald-400 text-[9px] px-2 py-0.5 rounded uppercase font-black mono border border-emerald-500/30">A/D</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-3">Fast-paced Attack/Defense scenario. Defend your infrastructure while exploiting others.</p>
+                            <div class="flex justify-between items-center text-[10px] mono">
+                                <span class="text-slate-500">Starts in: <span class="text-amber-400">02h 10m</span></span>
+                                <span class="text-emerald-400">256 Spots Left</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Activity Feed -->
+                <section class="glass-panel p-6 flex-1 flex flex-col">
+                    <h3 class="text-sm font-bold text-slate-300 mb-4 uppercase tracking-widest mono border-b border-slate-800 pb-2">Live Pwn Feed</h3>
+                    
+                    <div class="flex-1 overflow-y-auto space-y-4 pr-2" id="feed-container">
+                        <!-- Filled by JS -->
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Matrix Rain Background
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%""\'#&_(),.;:?!\\|{}<>[]^~'.split('');
+        const fontSize = 14;
+        let columns = width / fontSize;
+        const drops = [];
+        for (let x = 0; x < columns; x++) drops[x] = 1;
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(5, 10, 15, 0.05)';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.fillStyle = '#0f5132'; // Dark green
+            ctx.font = fontSize + 'px "JetBrains Mono"';
+            
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                
+                // Occasional bright green or white character
+                if (Math.random() > 0.95) ctx.fillStyle = '#10b981';
+                else if (Math.random() > 0.99) ctx.fillStyle = '#ffffff';
+                else ctx.fillStyle = '#064e3b';
+                
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                
+                if (drops[i] * fontSize > height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 35);
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            columns = width / fontSize;
+        });
+
+        // Live Activity Feed Generator
+        const hackers = ['ZeroDayNinja', 'BytePhantom', 'GhostInTheShell', 'CrashOverride', 'ViperSec', 'NeonBlade', 'CipherPunk', 'RootKitten'];
+        const actions = ['rooted machine', 'captured flag', 'submitted vulnerability', 'achieved first blood on'];
+        const targets = ['[HARD] Internal DC', '[EASY] Web App 01', '[INSANE] CEO Laptop', '[MEDIUM] Backup Server', 'SQLi Challenge'];
+
+        function addFeedItem() {
+            const feed = document.getElementById('feed-container');
+            const hacker = hackers[Math.floor(Math.random() * hackers.length)];
+            const action = actions[Math.floor(Math.random() * actions.length)];
+            const target = targets[Math.floor(Math.random() * targets.length)];
+            
+            const isFirstBlood = action.includes('first blood');
+            
+            const div = document.createElement('div');
+            div.className = 'flex items-start gap-3 text-xs p-3 rounded bg-slate-900/50 border border-slate-800/50 animate-[pulse_1s_ease-out]';
+            div.innerHTML = `
+                <div class="text-xl mt-1">${isFirstBlood ? '🩸' : '💀'}</div>
+                <div>
+                    <p class="mb-1"><span class="${isFirstBlood ? 'text-red-400 font-bold' : 'text-emerald-400 font-semibold'}">${hacker}</span> <span class="text-slate-400">${action}</span> <span class="text-white mono">${target}</span></p>
+                    <p class="text-[9px] text-slate-500 mono">Just now</p>
+                </div>
+            `;
+            
+            feed.prepend(div);
+            if (feed.children.length > 5) feed.lastChild.remove();
+        }
+
+        // Initialize feed
+        for(let i=0; i<4; i++) { addFeedItem(); }
+        setInterval(addFeedItem, 5000);
+    </script>
+</body>
+</html>

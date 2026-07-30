@@ -1,0 +1,4 @@
+                                <option value="ssti_jinja">Server-Side Template Injection (Email Service)</option>
+                                <option value="omni_sandbox">Free-for-All Sandbox (All Vulnerabilities)</option>
+                                <option value="custom_ctf">Custom Target (Simulated)</option>
+                            </select>

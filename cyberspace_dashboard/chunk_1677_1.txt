@@ -1,0 +1,65 @@
+        </div>
+    </div>
+
+    <!-- HOW TO PLAY MODAL -->
+    <div id="how-to-play-modal">
+        <div class="glass-panel p-8 w-[850px] max-w-[95vw] relative bg-[#050a0f] border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
+            <button onclick="document.getElementById('how-to-play-modal').classList.remove('show')" class="absolute top-4 right-4 text-slate-500 hover:text-white">✕</button>
+            <h2 class="text-2xl font-black text-indigo-400 mb-6 mono flex items-center gap-3 border-b border-indigo-900/50 pb-4"><span class="mi">map</span> HOW IT WORKS: OMNI-SANDBOX</h2>
+            
+            <!-- Red Team Map -->
+            <div class="mb-8">
+                <h3 class="text-red-500 font-bold mb-4 flex items-center gap-2"><span class="mi">swords</span> RED TEAM STRATEGY (ATTACK)</h3>
+                <div class="flex items-center justify-between mono text-xs">
+                    <div class="map-node border-red-900/50 text-red-400 w-1/4">
+                        <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                        Injects Payload<br>e.g. ' OR 1=1
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-travel"></div>
+                    </div>
+                    <div class="map-node border-blue-900/50 text-blue-400 w-1/4 opacity-50">
+                        <div class="font-bold text-sm mb-1 text-white">2. WAF</div>
+                        No Rule Matches
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-travel" style="animation-delay: 1s"></div>
+                    </div>
+                    <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4 glow-red">
+                        <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                        Vulnerability Triggered!<br><span class="text-red-500 font-black text-sm">RED WINS</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blue Team Map -->
+            <div>
+                <h3 class="text-blue-400 font-bold mb-4 flex items-center gap-2"><span class="mi">shield</span> BLUE TEAM STRATEGY (DEFENSE)</h3>
+                <div class="flex items-center justify-between mono text-xs">
+                    <div class="map-node border-red-900/50 text-red-400 w-1/4 opacity-50">
+                        <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                        Injects Payload
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-block"></div>
+                    </div>
+                    <div class="map-node border-blue-500 glow-blue text-blue-400 w-1/4 relative">
+                        <div class="font-bold text-sm mb-1 text-white">2. WAF Defense</div>
+                        Regex Rule Matches!<br>Payload Blocked
+                        <div class="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-lg animate-ping">✕</div>
+                    </div>
+                    <div class="map-line opacity-20"></div>
+                    <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4">
+                        <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                        Safe.<br><span class="text-blue-400 font-black text-sm">BLUE DEFENDS</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-slate-400 text-sm border-t border-slate-800 pt-4">
+                <strong class="text-indigo-400">Sandbox Rules:</strong> The Omni-Sandbox target is vulnerable to EVERYTHING (SQLi, XSS, CMD Injection, LFI, SSTI). The Red Team can use any vector, and the Blue Team must write rules to block all of them simultaneously.
+            </div>
+        </div>
+    </div>
+
+    <!-- WAITING ROOM (Initially Hidden) -->

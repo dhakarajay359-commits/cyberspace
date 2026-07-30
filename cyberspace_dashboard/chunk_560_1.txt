@@ -1,0 +1,1 @@
+                    { label: '🛡 Block Script Tags',    rule: '(?i)<script|<\\/script',                  tip: 'Blocks opening/closing script tags' },

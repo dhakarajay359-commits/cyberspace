@@ -1,0 +1,609 @@
+=== STEP 1615 ===
+--- Chunk 0 ---
+TARGET:
+                                <input type="text" id="target-input" placeholder="Enter attack payload..." class="flex-1 bg-white border border-slate-400 p-3 rounded text-black focus:border-red-500 outline-none transition">
+                                <button onclick="submitTargetForm()" class="bg-red-600 text-white px-8 py-3 rounded font-bold hover:bg-red-700 transition">EXECUTE</button>
+REPLACEMENT:
+                                <input type="text" id="target-input" placeholder="Enter attack payload..." onkeypress="if(event.key==='Enter') submitTargetForm()" class="flex-1 bg-white border border-slate-400 p-3 rounded text-black focus:border-red-500 outline-none transition">
+                                <button onclick="submitTargetForm()" class="bg-red-600 text-white px-8 py-3 rounded font-bold hover:bg-red-700 transition">EXECUTE</button>
+=== STEP 1639 ===
+--- Chunk 0 ---
+TARGET:
+                                <option value="ssti_jinja">Server-Side Template Injection (Email Service)</option>
+                                <option value="custom_ctf">Custom Target (Simulated)</option>
+                            </select>
+REPLACEMENT:
+                                <option value="ssti_jinja">Server-Side Template Injection (Email Service)</option>
+                                <option value="omni_sandbox">Free-for-All Sandbox (All Vulnerabilities)</option>
+                                <option value="custom_ctf">Custom Target (Simulated)</option>
+                            </select>
+--- Chunk 1 ---
+TARGET:
+                        </div>
+                    </div>`;
+            }
+        }
+REPLACEMENT:
+                        </div>
+                    </div>`;
+            } else if (window.currentScenario === 'omni_sandbox') {
+                targetArea.innerHTML = `
+                    <div class="bg-slate-800 p-2 text-xs font-mono text-slate-400 flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-fuchsia-500"></div> TARGET: OMNI-SANDBOX
+                    </div>
+                    <div class="flex-1 bg-white p-4 overflow-y-auto text-black font-mono">
+                        <div class="max-w-2xl mx-auto border-2 border-slate-300 p-6 rounded bg-slate-50 shadow-md mt-4">
+                            <h2 class="text-2xl font-black text-slate-800 mb-4 flex items-center gap-2"><span class="mi text-fuchsia-600">bug_report</span> Vulnerable System Sandbox</h2>
+                            <div class="text-slate-700 whitespace-pre-wrap mb-8 pb-6 border-b border-slate-300 text-sm leading-relaxed">This target is vulnerable to EVERYTHING (SQLi, XSS, CMD Injection, LFI, SSTI). 
+Red Team: Throw any exploit at it.
+Blue Team: Defend against all vectors simultaneously.</div>
+                            
+                            <label class="block text-xs font-bold text-slate-500 mb-2 tracking-widest uppercase">Inject Payload</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="target-input" placeholder="Enter any exploit payload..." onkeypress="if(event.key==='Enter') submitTargetForm()" class="flex-1 bg-white border border-slate-400 p-3 rounded text-black focus:border-fuchsia-500 outline-none transition">
+                                <button onclick="submitTargetForm()" class="bg-fuchsia-600 text-white px-8 py-3 rounded font-bold hover:bg-fuchsia-700 transition">EXECUTE</button>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        }
+=== STEP 1677 ===
+--- Chunk 0 ---
+TARGET:
+        /* ─── ATTACK / DEFENSE PANEL STYLES ─── */
+REPLACEMENT:
+        /* ─── BATTLE MAP ANIMATIONS ─── */
+        #how-to-play-modal {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.9);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #how-to-play-modal.show { opacity: 1; pointer-events: all; }
+        
+        .map-node {
+            background: #1e293b; border: 2px solid #334155; border-radius: 8px;
+            padding: 16px; text-align: center; position: relative; z-index: 2;
+        }
+        .map-line {
+            height: 4px; background: #334155; position: relative;
+            flex-grow: 1; margin: 0 10px; z-index: 1;
+        }
+        
+        .payload-dot {
+            width: 12px; height: 12px; border-radius: 50%;
+            position: absolute; top: -4px; left: 0;
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        @keyframes payload-travel {
+            0% { left: 0; opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+        @keyframes payload-blocked {
+            0% { left: 0; opacity: 1; transform: scale(1); }
+            45% { left: 50%; opacity: 1; transform: scale(1); }
+            50% { left: 50%; opacity: 0; transform: scale(2); }
+            100% { left: 50%; opacity: 0; }
+        }
+        
+        .animate-travel { animation: payload-travel 2s infinite linear; }
+        .animate-block { animation: payload-blocked 2s infinite linear; }
+
+        /* ─── ATTACK / DEFENSE PANEL STYLES ─── */
+--- Chunk 1 ---
+TARGET:
+    </div>
+
+    <!-- WAITING ROOM (Initially Hidden) -->
+REPLACEMENT:
+        </div>
+    </div>
+
+    <!-- HOW TO PLAY MODAL -->
+    <div id="how-to-play-modal">
+        <div class="glass-panel p-8 w-[850px] max-w-[95vw] relative bg-[#050a0f] border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
+            <button onclick="document.getElementById('how-to-play-modal').classList.remove('show')" class="absolute top-4 right-4 text-slate-500 hover:text-white">✕</button>
+            <h2 class="text-2xl font-black text-indigo-400 mb-6 mono flex items-center gap-3 border-b border-indigo-900/50 pb-4"><span class="mi">map</span> HOW IT WORKS: OMNI-SANDBOX</h2>
+            
+            <!-- Red Team Map -->
+            <div class="mb-8">
+                <h3 class="text-red-500 font-bold mb-4 flex items-center gap-2"><span class="mi">swords</span> RED TEAM STRATEGY (ATTACK)</h3>
+                <div class="flex items-center justify-between mono text-xs">
+                    <div class="map-node border-red-900/50 text-red-400 w-1/4">
+                        <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                        Injects Payload<br>e.g. ' OR 1=1
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-travel"></div>
+                    </div>
+                    <div class="map-node border-blue-900/50 text-blue-400 w-1/4 opacity-50">
+                        <div class="font-bold text-sm mb-1 text-white">2. WAF</div>
+                        No Rule Matches
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-travel" style="animation-delay: 1s"></div>
+                    </div>
+                    <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4 glow-red">
+                        <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                        Vulnerability Triggered!<br><span class="text-red-500 font-black text-sm">RED WINS</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blue Team Map -->
+            <div>
+                <h3 class="text-blue-400 font-bold mb-4 flex items-center gap-2"><span class="mi">shield</span> BLUE TEAM STRATEGY (DEFENSE)</h3>
+                <div class="flex items-center justify-between mono text-xs">
+                    <div class="map-node border-red-900/50 text-red-400 w-1/4 opacity-50">
+                        <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                        Injects Payload
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-block"></div>
+                    </div>
+                    <div class="map-node border-blue-500 glow-blue text-blue-400 w-1/4 relative">
+                        <div class="font-bold text-sm mb-1 text-white">2. WAF Defense</div>
+                        Regex Rule Matches!<br>Payload Blocked
+                        <div class="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-lg animate-ping">✕</div>
+                    </div>
+                    <div class="map-line opacity-20"></div>
+                    <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4">
+                        <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                        Safe.<br><span class="text-blue-400 font-black text-sm">BLUE DEFENDS</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-slate-400 text-sm border-t border-slate-800 pt-4">
+                <strong class="text-indigo-400">Sandbox Rules:</strong> The Omni-Sandbox target is vulnerable to EVERYTHING (SQLi, XSS, CMD Injection, LFI, SSTI). The Red Team can use any vector, and the Blue Team must write rules to block all of them simultaneously.
+            </div>
+        </div>
+    </div>
+
+    <!-- WAITING ROOM (Initially Hidden) -->
+--- Chunk 2 ---
+TARGET:
+                    </div>
+                </div>
+                <button onclick="startMatch()" class="btn-neon text-lg py-3 px-12 rounded-lg font-black mono animate-pulse">DEPLOY</button>
+            </header>
+REPLACEMENT:
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="document.getElementById('how-to-play-modal').classList.add('show')" class="bg-indigo-900/40 border border-indigo-500 text-indigo-300 text-sm py-3 px-8 rounded-lg font-bold mono hover:bg-indigo-800/60 transition flex items-center gap-2"><span class="mi">map</span> HOW IT WORKS</button>
+                    <button onclick="startMatch()" class="btn-neon text-lg py-3 px-12 rounded-lg font-black mono animate-pulse">DEPLOY</button>
+                </div>
+            </header>
+=== STEP 1762 ===
+--- Chunk 0 ---
+TARGET:
+            border-radius: 12px; padding: 48px; max-width: 600px; width: 90%;
+            text-align: center;
+            animation: victory-pulse 1.5s infinite;
+        }
+REPLACEMENT:
+            border-radius: 12px; padding: 48px; max-width: 600px; width: 90%;
+            text-align: center;
+            animation: victory-pulse 1.5s infinite;
+        }
+        
+        /* Blue Team Victory */
+        #blue-victory-overlay {
+            position: fixed; inset: 0; z-index: 9000;
+            background: rgba(0,0,0,0.92);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        #blue-victory-overlay.show { opacity: 1; pointer-events: all; }
+        @keyframes blue-victory-pulse { 0%,100%{box-shadow:0 0 40px rgba(59,130,246,0.5)} 50%{box-shadow:0 0 80px rgba(59,130,246,0.9)} }
+        #blue-victory-box {
+            background: #000a14;
+            border: 2px solid #3b82f6;
+            box-shadow: 0 0 60px rgba(59,130,246,0.6);
+            border-radius: 12px; padding: 48px; max-width: 600px; width: 90%;
+            text-align: center;
+            animation: blue-victory-pulse 1.5s infinite;
+        }
+--- Chunk 1 ---
+TARGET:
+            <!-- Red Team Map -->
+            <div class="mb-8">
+                <h3 class="text-red-500 font-bold mb-4 flex items-center gap-2"><span class="mi">swords</span> RED TEAM STRATEGY (ATTACK)</h3>
+                <div class="flex items-center justify-between mono text-xs">
+                    <div class="map-node border-red-900/50 text-red-400 w-1/4">
+                        <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                        Injects Payload<br>e.g. ' OR 1=1
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-travel"></div>
+                    </div>
+                    <div class="map-node border-blue-900/50 text-blue-400 w-1/4 opacity-50">
+                        <div class="font-bold text-sm mb-1 text-white">2. WAF</div>
+                        No Rule Matches
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-travel" style="animation-delay: 1s"></div>
+                    </div>
+                    <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4 glow-red">
+                        <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                        Vulnerability Triggered!<br><span class="text-red-500 font-black text-sm">RED WINS</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blue Team Map -->
+            <div>
+                <h3 class="text-blue-400 font-bold mb-4 flex items-center gap-2"><span class="mi">shield</span> BLUE TEAM STRATEGY (DEFENSE)</h3>
+                <div class="flex items-center justify-between mono text-xs">
+                    <div class="map-node border-red-900/50 text-red-400 w-1/4 opacity-50">
+                        <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                        Injects Payload
+                    </div>
+                    <div class="map-line">
+                        <div class="payload-dot bg-red-500 text-red-500 animate-block"></div>
+                    </div>
+                    <div class="map-node border-blue-500 glow-blue text-blue-400 w-1/4 relative">
+                        <div class="font-bold text-sm mb-1 text-white">2. WAF Defense</div>
+                        Regex Rule Matches!<br>Payload Blocked
+                        <div class="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-lg animate-ping">✕</div>
+                    </div>
+                    <div class="map-line opacity-20"></div>
+                    <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4">
+                        <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                        Safe.<br><span class="text-blue-400 font-black text-sm">BLUE DEFENDS</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-slate-400 text-sm border-t border-slate-800 pt-4">
+                <strong class="text-indigo-400">Sandbox Rules:</strong> The Omni-Sandbox target is vulnerable to EVERYTHING (SQLi, XSS, CMD Injection, LFI, SSTI). The Red Team can use any vector, and the Blue Team must write rules to block all of them simultaneously.
+            </div>
+        </div>
+    </div>
+REPLACEMENT:
+            <div id="dynamic-map-content">
+                <!-- Filled by JS showHowToPlayModal() -->
+            </div>
+        </div>
+    </div>
+--- Chunk 2 ---
+TARGET:
+                <div class="flex gap-4">
+                    <button onclick="document.getElementById('how-to-play-modal').classList.add('show')" class="bg-indigo-900/40 border border-indigo-500 text-indigo-300 text-sm py-3 px-8 rounded-lg font-bold mono hover:bg-indigo-800/60 transition flex items-center gap-2"><span class="mi">map</span> HOW IT WORKS</button>
+                    <button onclick="startMatch()" class="btn-neon text-lg py-3 px-12 rounded-lg font-black mono animate-pulse">DEPLOY</button>
+                </div>
+REPLACEMENT:
+                <div class="flex gap-4">
+                    <button onclick="showHowToPlayModal()" class="bg-indigo-900/40 border border-indigo-500 text-indigo-300 text-sm py-3 px-8 rounded-lg font-bold mono hover:bg-indigo-800/60 transition flex items-center gap-2"><span class="mi">map</span> HOW IT WORKS</button>
+                    <button onclick="startMatch()" class="btn-neon text-lg py-3 px-12 rounded-lg font-black mono animate-pulse">DEPLOY</button>
+                </div>
+--- Chunk 3 ---
+TARGET:
+        <header class="flex justify-between items-center bg-slate-900 border border-slate-700 p-3 rounded mb-4">
+             <div class="text-emerald-400 mono font-bold">MATCH IN PROGRESS // LOBBY: <span id="bg-lobby-id"></span></div>
+             <div class="text-amber-400 mono text-xl animate-pulse">04:59</div>
+             <button onclick="window.location.reload()" class="bg-red-900/50 text-red-400 px-4 py-1 rounded text-sm hover:bg-red-500 hover:text-black transition">SURRENDER</button>
+        </header>
+REPLACEMENT:
+        <header class="flex justify-between items-center bg-slate-900 border border-slate-700 p-3 rounded mb-4">
+             <div class="text-emerald-400 mono font-bold">MATCH IN PROGRESS // LOBBY: <span id="bg-lobby-id"></span></div>
+             <div id="match-timer-display" class="text-amber-400 mono text-xl">05:00</div>
+             <button onclick="window.location.reload()" class="bg-red-900/50 text-red-400 px-4 py-1 rounded text-sm hover:bg-red-500 hover:text-black transition">SURRENDER</button>
+        </header>
+--- Chunk 4 ---
+TARGET:
+            renderTargetPreview();
+            gamePollInterval = setInterval(pollGameState, 1000);
+        }
+REPLACEMENT:
+            renderTargetPreview();
+            gamePollInterval = setInterval(pollGameState, 1000);
+            startMatchTimer();
+        }
+
+        let matchTimerInterval = null;
+        let matchTimeRemaining = 300; // 5 minutes in seconds
+
+        function startMatchTimer() {
+            if (matchTimerInterval) clearInterval(matchTimerInterval);
+            matchTimeRemaining = 300;
+            updateTimerDisplay();
+            
+            matchTimerInterval = setInterval(() => {
+                matchTimeRemaining--;
+                updateTimerDisplay();
+                
+                if (matchTimeRemaining <= 0) {
+                    clearInterval(matchTimerInterval);
+                    if (window.breachTriggered) return; // Red already won
+                    triggerBlueVictory();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(matchTimeRemaining / 60).toString().padStart(2, '0');
+            const s = (matchTimeRemaining % 60).toString().padStart(2, '0');
+            const display = document.getElementById('match-timer-display');
+            if (display) {
+                display.textContent = `${m}:${s}`;
+                if (matchTimeRemaining <= 30) {
+                    display.classList.add('animate-pulse', 'text-red-500');
+                    display.classList.remove('text-amber-400');
+                }
+            }
+        }
+--- Chunk 5 ---
+TARGET:
+                    if (data.status === 'blue_wins' && !window.breachTriggered) {
+                        window.breachTriggered = true;
+                        clearInterval(gamePollInterval);
+                        alert('🛡️ ATTACK NEUTRALIZED! Blue Team wins! The WAF held the line.');
+                    }
+                }
+REPLACEMENT:
+                    if (data.status === 'blue_wins' && !window.breachTriggered) {
+                        window.breachTriggered = true;
+                        clearInterval(gamePollInterval);
+                        triggerBlueVictory();
+                    }
+                }
+=== STEP 1773 ===
+--- Chunk 0 ---
+TARGET:
+        function closeVictory() {
+            document.getElementById('red-victory-overlay').classList.remove('show');
+        }
+    </script>
+REPLACEMENT:
+        function closeVictory() {
+            document.getElementById('red-victory-overlay').classList.remove('show');
+        }
+
+        function triggerBlueVictory() {
+            document.getElementById('blue-victory-overlay').classList.add('show');
+        }
+        function closeBlueVictory() {
+            document.getElementById('blue-victory-overlay').classList.remove('show');
+        }
+
+        function showHowToPlayModal() {
+            const container = document.getElementById('dynamic-map-content');
+            let content = '';
+            
+            if (window.currentScenario === 'custom_ctf') {
+                content = `
+                    <div class="mb-8">
+                        <h3 class="text-red-500 font-bold mb-4 flex items-center gap-2"><span class="mi">swords</span> RED TEAM STRATEGY (ATTACK)</h3>
+                        <div class="flex items-center justify-between mono text-xs">
+                            <div class="map-node border-red-900/50 text-red-400 w-1/4">
+                                <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                                Injects custom keyword<br>e.g. 'hack_me_123'
+                            </div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-travel"></div></div>
+                            <div class="map-node border-blue-900/50 text-blue-400 w-1/4 opacity-50">
+                                <div class="font-bold text-sm mb-1 text-white">2. WAF</div>
+                                No Rule Matches
+                            </div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-travel" style="animation-delay: 1s"></div></div>
+                            <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4 glow-red">
+                                <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                                Exploit Keyword Found!<br><span class="text-red-500 font-black text-sm">RED WINS</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-blue-400 font-bold mb-4 flex items-center gap-2"><span class="mi">shield</span> BLUE TEAM STRATEGY (DEFENSE)</h3>
+                        <div class="flex items-center justify-between mono text-xs">
+                            <div class="map-node border-red-900/50 text-red-400 w-1/4 opacity-50"><div class="font-bold text-sm mb-1 text-white">1. Attacker</div>Injects custom keyword</div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-block"></div></div>
+                            <div class="map-node border-blue-500 glow-blue text-blue-400 w-1/4 relative">
+                                <div class="font-bold text-sm mb-1 text-white">2. WAF Defense</div>
+                                Rule Blocks Keyword!<br>Payload Blocked
+                                <div class="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-lg animate-ping">✕</div>
+                            </div>
+                            <div class="map-line opacity-20"></div>
+                            <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4"><div class="font-bold text-sm mb-1 text-white">3. Target Server</div>Safe.<br><span class="text-blue-400 font-black text-sm">BLUE DEFENDS</span></div>
+                        </div>
+                    </div>
+                    <div class="mt-8 text-slate-400 text-sm border-t border-slate-800 pt-4"><strong class="text-indigo-400">Sandbox Rules:</strong> In a Custom Scenario, the Red Team must use the specific Exploit Keyword chosen by the Host. The Blue Team must write a regex to block that specific keyword.</div>
+                `;
+            } else {
+                content = `
+                    <div class="mb-8">
+                        <h3 class="text-red-500 font-bold mb-4 flex items-center gap-2"><span class="mi">swords</span> RED TEAM STRATEGY (ATTACK)</h3>
+                        <div class="flex items-center justify-between mono text-xs">
+                            <div class="map-node border-red-900/50 text-red-400 w-1/4">
+                                <div class="font-bold text-sm mb-1 text-white">1. Attacker</div>
+                                Injects Payload<br>e.g. ' OR 1=1
+                            </div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-travel"></div></div>
+                            <div class="map-node border-blue-900/50 text-blue-400 w-1/4 opacity-50">
+                                <div class="font-bold text-sm mb-1 text-white">2. WAF</div>
+                                No Rule Matches
+                            </div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-travel" style="animation-delay: 1s"></div></div>
+                            <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4 glow-red">
+                                <div class="font-bold text-sm mb-1 text-white">3. Target Server</div>
+                                Vulnerability Triggered!<br><span class="text-red-500 font-black text-sm">RED WINS</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-blue-400 font-bold mb-4 flex items-center gap-2"><span class="mi">shield</span> BLUE TEAM STRATEGY (DEFENSE)</h3>
+                        <div class="flex items-center justify-between mono text-xs">
+                            <div class="map-node border-red-900/50 text-red-400 w-1/4 opacity-50"><div class="font-bold text-sm mb-1 text-white">1. Attacker</div>Injects Payload</div>
+                            <div class="map-line"><div class="payload-dot bg-red-500 text-red-500 animate-block"></div></div>
+                            <div class="map-node border-blue-500 glow-blue text-blue-400 w-1/4 relative">
+                                <div class="font-bold text-sm mb-1 text-white">2. WAF Defense</div>
+                                Regex Rule Matches!<br>Payload Blocked
+                                <div class="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-lg animate-ping">✕</div>
+                            </div>
+                            <div class="map-line opacity-20"></div>
+                            <div class="map-node border-emerald-900/50 text-emerald-400 w-1/4"><div class="font-bold text-sm mb-1 text-white">3. Target Server</div>Safe.<br><span class="text-blue-400 font-black text-sm">BLUE DEFENDS</span></div>
+                        </div>
+                    </div>
+                    <div class="mt-8 text-slate-400 text-sm border-t border-slate-800 pt-4"><strong class="text-indigo-400">Sandbox Rules:</strong> The Omni-Sandbox target is vulnerable to EVERYTHING (SQLi, XSS, CMD Injection, LFI, SSTI). The Red Team can use any vector, and the Blue Team must write rules to block all of them simultaneously.</div>
+                `;
+            }
+            container.innerHTML = content;
+            document.getElementById('how-to-play-modal').classList.add('show');
+        }
+    </script>
+--- Chunk 1 ---
+TARGET:
+    <!-- RED TEAM VICTORY MODAL -->
+    <div id="red-victory-overlay">
+        <div id="victory-box">
+            <div style="margin-bottom:16px;">
+                <span class="mi mi-fill" style="font-size:72px;color:#10b981;font-variation-settings:'FILL' 1,'wght' 700,'GRAD' 0,'opsz' 48">military_tech</span>
+            </div>
+            <h1 class="text-emerald-400 text-3xl font-black uppercase tracking-widest mb-2" style="font-family:'JetBrains Mono',monospace">TARGET BREACHED</h1>
+            <p class="text-emerald-300 text-sm font-bold mb-6 uppercase tracking-widest">Red Team Victory — Mission Accomplished</p>
+            <div class="bg-emerald-950/50 border border-emerald-800 rounded-lg p-4 mb-6 text-left">
+                <p class="text-emerald-300 text-xs mono leading-relaxed">
+                    <span class="text-emerald-400 font-black">[SUCCESS]</span> Your exploit successfully bypassed the target's defenses.<br><br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Result:</span> Root access granted<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Data:</span> All sensitive records exfiltrated<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Score:</span> <span class="text-emerald-400 font-black">+100 PTS</span>
+                </p>
+            </div>
+            <button onclick="closeVictory()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-8 py-3 rounded-lg uppercase tracking-widest transition flex items-center gap-2 mx-auto" style="font-family:'JetBrains Mono',monospace">
+                <span class="mi">check_circle</span> CLOSE
+            </button>
+        </div>
+    </div>
+
+{% endblock %}
+
+REPLACEMENT:
+    <!-- RED TEAM VICTORY MODAL -->
+    <div id="red-victory-overlay">
+        <div id="victory-box">
+            <div style="margin-bottom:16px;">
+                <span class="mi mi-fill" style="font-size:72px;color:#10b981;font-variation-settings:'FILL' 1,'wght' 700,'GRAD' 0,'opsz' 48">military_tech</span>
+            </div>
+            <h1 class="text-emerald-400 text-3xl font-black uppercase tracking-widest mb-2" style="font-family:'JetBrains Mono',monospace">TARGET BREACHED</h1>
+            <p class="text-emerald-300 text-sm font-bold mb-6 uppercase tracking-widest">Red Team Victory — Mission Accomplished</p>
+            <div class="bg-emerald-950/50 border border-emerald-800 rounded-lg p-4 mb-6 text-left">
+                <p class="text-emerald-300 text-xs mono leading-relaxed">
+                    <span class="text-emerald-400 font-black">[SUCCESS]</span> Your exploit successfully bypassed the target's defenses.<br><br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Result:</span> Root access granted<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Data:</span> All sensitive records exfiltrated<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Score:</span> <span class="text-emerald-400 font-black">+100 PTS</span>
+                </p>
+            </div>
+            <button onclick="closeVictory()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-8 py-3 rounded-lg uppercase tracking-widest transition flex items-center gap-2 mx-auto" style="font-family:'JetBrains Mono',monospace">
+                <span class="mi">check_circle</span> CLOSE
+            </button>
+        </div>
+    </div>
+
+    <!-- BLUE TEAM VICTORY MODAL -->
+    <div id="blue-victory-overlay">
+        <div id="blue-victory-box">
+            <div style="margin-bottom:16px;">
+                <span class="mi mi-fill" style="font-size:72px;color:#3b82f6;font-variation-settings:'FILL' 1,'wght' 700,'GRAD' 0,'opsz' 48">shield</span>
+            </div>
+            <h1 class="text-blue-400 text-3xl font-black uppercase tracking-widest mb-2" style="font-family:'JetBrains Mono',monospace">TARGET SECURED</h1>
+            <p class="text-blue-300 text-sm font-bold mb-6 uppercase tracking-widest">Blue Team Victory — Timer Expired</p>
+            <div class="bg-blue-950/50 border border-blue-800 rounded-lg p-4 mb-6 text-left">
+                <p class="text-blue-300 text-xs mono leading-relaxed">
+                    <span class="text-blue-400 font-black">[SUCCESS]</span> Your Web Application Firewall held the line.<br><br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Result:</span> All attacks mitigated<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Data:</span> Secured and uncompromised<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Score:</span> <span class="text-blue-400 font-black">+100 PTS</span>
+                </p>
+            </div>
+            <button onclick="closeBlueVictory()" class="bg-blue-600 hover:bg-blue-500 text-white font-black px-8 py-3 rounded-lg uppercase tracking-widest transition flex items-center gap-2 mx-auto" style="font-family:'JetBrains Mono',monospace">
+                <span class="mi">check_circle</span> CLOSE
+            </button>
+        </div>
+    </div>
+
+{% endblock %}
+=== STEP 1818 ===
+--- Chunk 0 ---
+TARGET:
+                            <div class="flex gap-2">
+                                <input type="text" id="blue-custom-rule" 
+                                    class="flex-1 bg-black border border-slate-700 p-2 rounded text-white mono text-xs outline-none focus:border-blue-500 transition" 
+                                    placeholder="e.g. .*UNION.*SELECT.*">
+                                <button onclick="deployCustomRule()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded text-xs font-bold transition">DEPLOY</button>
+                            </div>
+                        </div>
+                    </div>
+REPLACEMENT:
+                            <div class="flex gap-2">
+                                <input type="text" id="blue-custom-rule" 
+                                    class="flex-1 bg-black border border-slate-700 p-2 rounded text-white mono text-xs outline-none focus:border-blue-500 transition" 
+                                    placeholder="e.g. .*UNION.*SELECT.*">
+                                <button onclick="deployCustomRule()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded text-xs font-bold transition">DEPLOY</button>
+                            </div>
+                        </div>
+
+                        <!-- Payload Decoder Tool -->
+                        <div class="mt-2 pt-3 border-t border-slate-800">
+                            <p class="text-[10px] text-fuchsia-400 mb-1 mono uppercase flex items-center gap-1"><span class="mi mi-sm">vpn_key</span> Traffic Decoder</p>
+                            <div class="flex gap-2 mb-1">
+                                <input type="text" id="blue-decoder-input" 
+                                    class="flex-1 bg-black border border-slate-700 p-2 rounded text-white mono text-xs outline-none focus:border-fuchsia-500 transition" 
+                                    placeholder="Paste base64 payload here...">
+                                <button onclick="decodeTraffic()" class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-3 rounded text-xs font-bold transition">DECODE</button>
+                            </div>
+                            <div id="blue-decoder-output" class="bg-slate-900 border border-slate-800 rounded p-2 text-emerald-400 mono text-[10px] min-h-[34px] break-all">
+                                <!-- Decoded output appears here -->
+                            </div>
+                        </div>
+                    </div>
+--- Chunk 1 ---
+TARGET:
+        function deployCustomRule() {
+            const input = document.getElementById('blue-custom-rule');
+            const rule = input.value.trim();
+            if (!rule) return;
+            input.value = '';
+            deployDefense(rule);
+        }
+        
+        function renderTargetPreview() {
+REPLACEMENT:
+        function deployCustomRule() {
+            const input = document.getElementById('blue-custom-rule');
+            const rule = input.value.trim();
+            if (!rule) return;
+            input.value = '';
+            deployDefense(rule);
+        }
+
+        function decodeTraffic() {
+            const input = document.getElementById('blue-decoder-input').value.trim();
+            const output = document.getElementById('blue-decoder-output');
+            if (!input) {
+                output.textContent = '';
+                return;
+            }
+            try {
+                let b64 = input;
+                // If they copy-pasted the whole line, extract just the b64 part
+                if (b64.includes('?q=')) {
+                    b64 = b64.split('?q=')[1];
+                    if (b64.includes(' ')) b64 = b64.split(' ')[0];
+                }
+                const decoded = atob(b64);
+                output.textContent = decoded;
+                output.classList.remove('text-red-400');
+                output.classList.add('text-emerald-400');
+            } catch (e) {
+                output.textContent = 'ERROR: Invalid Base64 String';
+                output.classList.remove('text-emerald-400');
+                output.classList.add('text-red-400');
+            }
+        }
+        
+        function renderTargetPreview() {

@@ -1,0 +1,37 @@
+            renderTargetPreview();
+            gamePollInterval = setInterval(pollGameState, 1000);
+            startMatchTimer();
+        }
+
+        let matchTimerInterval = null;
+        let matchTimeRemaining = 300; // 5 minutes in seconds
+
+        function startMatchTimer() {
+            if (matchTimerInterval) clearInterval(matchTimerInterval);
+            matchTimeRemaining = 300;
+            updateTimerDisplay();
+            
+            matchTimerInterval = setInterval(() => {
+                matchTimeRemaining--;
+                updateTimerDisplay();
+                
+                if (matchTimeRemaining <= 0) {
+                    clearInterval(matchTimerInterval);
+                    if (window.breachTriggered) return; // Red already won
+                    triggerBlueVictory();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(matchTimeRemaining / 60).toString().padStart(2, '0');
+            const s = (matchTimeRemaining % 60).toString().padStart(2, '0');
+            const display = document.getElementById('match-timer-display');
+            if (display) {
+                display.textContent = `${m}:${s}`;
+                if (matchTimeRemaining <= 30) {
+                    display.classList.add('animate-pulse', 'text-red-500');
+                    display.classList.remove('text-amber-400');
+                }
+            }
+        }

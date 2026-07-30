@@ -1,0 +1,45 @@
+    <!-- RED TEAM VICTORY MODAL -->
+    <div id="red-victory-overlay">
+        <div id="victory-box">
+            <div style="margin-bottom:16px;">
+                <span class="mi mi-fill" style="font-size:72px;color:#10b981;font-variation-settings:'FILL' 1,'wght' 700,'GRAD' 0,'opsz' 48">military_tech</span>
+            </div>
+            <h1 class="text-emerald-400 text-3xl font-black uppercase tracking-widest mb-2" style="font-family:'JetBrains Mono',monospace">TARGET BREACHED</h1>
+            <p class="text-emerald-300 text-sm font-bold mb-6 uppercase tracking-widest">Red Team Victory — Mission Accomplished</p>
+            <div class="bg-emerald-950/50 border border-emerald-800 rounded-lg p-4 mb-6 text-left">
+                <p class="text-emerald-300 text-xs mono leading-relaxed">
+                    <span class="text-emerald-400 font-black">[SUCCESS]</span> Your exploit successfully bypassed the target's defenses.<br><br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Result:</span> Root access granted<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Data:</span> All sensitive records exfiltrated<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Score:</span> <span class="text-emerald-400 font-black">+100 PTS</span>
+                </p>
+            </div>
+            <button onclick="closeVictory()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-8 py-3 rounded-lg uppercase tracking-widest transition flex items-center gap-2 mx-auto" style="font-family:'JetBrains Mono',monospace">
+                <span class="mi">check_circle</span> CLOSE
+            </button>
+        </div>
+    </div>
+
+    <!-- BLUE TEAM VICTORY MODAL -->
+    <div id="blue-victory-overlay">
+        <div id="blue-victory-box">
+            <div style="margin-bottom:16px;">
+                <span class="mi mi-fill" style="font-size:72px;color:#3b82f6;font-variation-settings:'FILL' 1,'wght' 700,'GRAD' 0,'opsz' 48">shield</span>
+            </div>
+            <h1 class="text-blue-400 text-3xl font-black uppercase tracking-widest mb-2" style="font-family:'JetBrains Mono',monospace">TARGET SECURED</h1>
+            <p class="text-blue-300 text-sm font-bold mb-6 uppercase tracking-widest">Blue Team Victory — Timer Expired</p>
+            <div class="bg-blue-950/50 border border-blue-800 rounded-lg p-4 mb-6 text-left">
+                <p class="text-blue-300 text-xs mono leading-relaxed">
+                    <span class="text-blue-400 font-black">[SUCCESS]</span> Your Web Application Firewall held the line.<br><br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Result:</span> All attacks mitigated<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Data:</span> Secured and uncompromised<br>
+                    <span class="text-cyan-400"><span class="mi mi-sm">chevron_right</span> Score:</span> <span class="text-blue-400 font-black">+100 PTS</span>
+                </p>
+            </div>
+            <button onclick="closeBlueVictory()" class="bg-blue-600 hover:bg-blue-500 text-white font-black px-8 py-3 rounded-lg uppercase tracking-widest transition flex items-center gap-2 mx-auto" style="font-family:'JetBrains Mono',monospace">
+                <span class="mi">check_circle</span> CLOSE
+            </button>
+        </div>
+    </div>
+
+{% endblock %}

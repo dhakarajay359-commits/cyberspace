@@ -1,0 +1,6 @@
+                        <div id="custom-ctf-fields" class="hidden mb-4 text-left">
+                            <label class="block text-slate-400 text-sm mb-1">Target Name & Vulnerability Details</label>
+                            <textarea id="create-custom-desc" rows="3" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm mb-2" placeholder="E.g., Legacy FTP Server - Vulnerable to Path Traversal..."></textarea>
+                            <label class="block text-slate-400 text-sm mb-1">Exploit Payload Keyword</label>
+                            <input type="text" id="create-custom-flag" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm" placeholder="e.g. ../../etc/passwd">
+                        </div>

@@ -1,0 +1,108 @@
+Created At: 2026-07-26T06:17:09Z
+Completed At: 2026-07-26T06:17:09Z
+File Path: `file:///c:/Users/ASUS/OneDrive/Desktop/reseach/cyberspace_dashboard/templates/compete.html`
+Total Lines: 1420
+Total Bytes: 89802
+Showing lines 1 to 100
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: {% set active_page = "compete" %}
+2: {% extends "base.html" %}
+3: 
+4: {% block extra_head %}
+5:     <style>
+6:         body { font-family: 'Inter', sans-serif; background-color: #050a0f; color: #e2e8f0; overflow-x: hidden; }
+7:         .mono { font-family: 'JetBrains Mono', monospace; }
+8:         
+9:         /* Background Matrix */
+10:         #matrix-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; opacity: 0.8; pointer-events: none; }
+11:         .bg-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at center, transparent 0%, #050a0f 80%); pointer-events: none; }
+12:         
+13:         /* Cyber Glitch Effect */
+14:         .glitch-wrapper { position: relative; display: inline-block; }
+15:         .glitch-text { color: #fff; font-weight: 800; font-size: 2.5rem; text-transform: uppercase; position: relative; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+16:         .glitch-text::before, .glitch-text::after {
+17:             content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+18:             background: #050a0f; clip: rect(0, 0, 0, 0); 
+19:         }
+20:         .glitch-text::before {
+21:             left: -2px; text-shadow: -2px 0 #ff00c1;
+22:             animation: glitch-anim-1 2s infinite linear alternate-reverse;
+23:         }
+24:         .glitch-text::after {
+25:             left: 2px; text-shadow: -2px 0 #00fff9;
+26:             animation: glitch-anim-2 3s infinite linear alternate-reverse;
+27:         }
+28:         @keyframes glitch-anim-1 {
+29:             0% { clip: rect(42px, 9999px, 44px, 0); }
+30:             20% { clip: rect(12px, 9999px, 59px, 0); }
+31:             40% { clip: rect(73px, 9999px, 54px, 0); }
+32:             60% { clip: rect(14px, 9999px, 89px, 0); }
+33:             80% { clip: rect(81px, 9999px, 32px, 0); }
+34:             100% { clip: rect(32px, 9999px, 98px, 0); }
+35:         }
+36:         @keyframes glitch-anim-2 {
+37:             0% { clip: rect(65px, 9999px, 100px, 0); }
+38:             20% { clip: rect(4px, 9999px, 63px, 0); }
+39:             40% { clip: rect(98px, 9999px, 24px, 0); }
+40:             60% { clip: rect(33px, 9999px, 86px, 0); }
+41:             80% { clip: rect(15px, 9999px, 5px, 0); }
+42:             100% { clip: rect(91px, 9999px, 42px, 0); }
+43:         }
+44: 
+45:         /* Nav Sidebar */
+46:         .sidebar { width: 80px; transition: width 0.3s ease; }
+47:         .sidebar:hover { width: 220px; }
+48:         .nav-item { white-space: nowrap; overflow: hidden; opacity: 0; transition: opacity 0.3s; margin-left: 12px; }
+49:         .sidebar:hover .nav-item { opacity: 1; }
+50: 
+51:         /* Cyber Glows */
+52:         .glass-panel {
+53:             background: rgba(15, 23, 42, 0.7);
+54:             backdrop-filter: blur(12px);
+55:             border: 1px solid rgba(16, 185, 129, 0.2);
+56:             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(16, 185, 129, 0.05);
+57:             border-radius: 12px;
+58:         }
+59:         .glow-green { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); border-color: rgba(16, 185, 129, 0.6); }
+60:         .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.6); }
+61:         
+62:         /* Radar Sweep */
+63:         .radar-box { position: relative; overflow: hidden; border-radius: 50%; width: 120px; height: 120px; border: 2px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05); }
+64:         .radar-box::after {
+65:             content: ''; position: absolute; top: 50%; left: 50%; width: 50%; height: 50%;
+66:             transform-origin: top left; background: linear-gradient(45deg, rgba(16, 185, 129, 0.8) 0%, transparent 50%);
+67:             animation: radar-spin 2s linear infinite;
+68:         }
+69:         @keyframes radar-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+70:         
+71:         /* Neon Button */
+72:         .btn-neon {
+73:             background: transparent; color: #10b981; border: 1px solid #10b981;
+74:             box-shadow: 0 0 10px rgba(16, 185, 129, 0.3), inset 0 0 10px rgba(16, 185, 129, 0.3);
+75:             transition: all 0.2s ease; text-transform: uppercase; letter-spacing: 2px;
+76:         }
+77:         .btn-neon:hover {
+78:             background: #10b981; color: #000;
+79:             box-shadow: 0 0 20px rgba(16, 185, 129, 0.8), inset 0 0 20px rgba(16, 185, 129, 0.8);
+80:         }
+81: 
+82:         /* Pulse */
+83:         @keyframes pulse-ring {
+84:             0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+85:             70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+86:             100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+87:         }
+88:         .pulse-live { animation: pulse-ring 2s infinite; border-radius: 50%; width: 12px; height: 12px; background: #ef4444; display: inline-block; margin-right: 8px; }
+89: 
+90:         /* Table rows hover */
+91:         tr.hacker-row:hover { background: rgba(16, 185, 129, 0.1); cursor: crosshair; }
+92: 
+93:         /* ─── BREACH EVENT STYLES ─── */
+94:         #breach-overlay {
+95:             position: fixed; inset: 0; z-index: 9000;
+96:             background: rgba(0,0,0,0.92);
+97:             display: flex; align-items: center; justify-content: center;
+98:             opacity: 0; pointer-events: none;
+99:             transition: opacity 0.4s ease;
+100:         }
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

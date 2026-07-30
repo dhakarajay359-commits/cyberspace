@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+  # ── Terminal Backend ───────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: linux-terminal-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - FRONTEND_URL=http://localhost:3000
+      - USE_DOCKER=true
+      - SANDBOX_IMAGE=linux-terminal-sandbox
+      - CONTAINER_MEMORY=256m
+      - CONTAINER_CPUS=0.5
+      - SESSION_TIMEOUT=1800000
+      - JWT_SECRET=${JWT_SECRET:-changeme_in_production}
+    volumes:
+      # Mount Docker socket so backend can spawn containers
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Next.js Frontend ───────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: linux-terminal-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  default:
+    name: linux-terminal-network

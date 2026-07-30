@@ -1,0 +1,5 @@
+                // Step 3: Fetch lobby status to get the scenario
+                const statusRes = await fetch(`/api/lobby/status/${demoLobby}`);
+                const statusData = await statusRes.json();
+                if (statusData.scenario) window.currentScenario = statusData.scenario;
+                if (statusData.custom_desc) window.customDesc = statusData.custom_desc;

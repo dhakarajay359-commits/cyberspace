@@ -1,0 +1,23 @@
+            border-radius: 12px; padding: 48px; max-width: 600px; width: 90%;
+            text-align: center;
+            animation: victory-pulse 1.5s infinite;
+        }
+        
+        /* Blue Team Victory */
+        #blue-victory-overlay {
+            position: fixed; inset: 0; z-index: 9000;
+            background: rgba(0,0,0,0.92);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        #blue-victory-overlay.show { opacity: 1; pointer-events: all; }
+        @keyframes blue-victory-pulse { 0%,100%{box-shadow:0 0 40px rgba(59,130,246,0.5)} 50%{box-shadow:0 0 80px rgba(59,130,246,0.9)} }
+        #blue-victory-box {
+            background: #000a14;
+            border: 2px solid #3b82f6;
+            box-shadow: 0 0 60px rgba(59,130,246,0.6);
+            border-radius: 12px; padding: 48px; max-width: 600px; width: 90%;
+            text-align: center;
+            animation: blue-victory-pulse 1.5s infinite;
+        }

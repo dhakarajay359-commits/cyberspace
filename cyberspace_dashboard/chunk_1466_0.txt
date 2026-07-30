@@ -1,0 +1,24 @@
+        async function createLobby() {
+            const scenario = document.getElementById('create-scenario').value;
+            const team = document.getElementById('create-team').value;
+            const customDesc = document.getElementById('create-custom-desc').value;
+            const customFlag = document.getElementById('create-custom-flag').value;
+            
+            if (scenario === 'custom_ctf' && (!customDesc || !customFlag)) {
+                showError('Please provide both Challenge Description and Winning Flag.');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/lobby/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        scenario: scenario, 
+                        host_team: team, 
+                        max_players: 2,
+                        custom_desc: customDesc,
+                        custom_flag: customFlag
+                    })
+                });
+                const data = await res.json();

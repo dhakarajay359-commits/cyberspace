@@ -1,0 +1,43 @@
+<div id="tab-verify-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+
+                        <div id="tab-verify-box" class="bg-slate-950 rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl relative">
+
+                            <div id="tab-verify-icon" class="text-5xl mb-4"><span class="mi mi-xl" style="font-size:56px">lock</span></div>
+
+                            <h3 id="tab-verify-title" class="text-white font-black text-xl uppercase tracking-widest mb-1">Enter Team Code</h3>
+
+                            <p id="tab-verify-subtitle" class="text-slate-400 text-xs mb-5">Only team members with the correct invite code can access this view.</p>
+
+                            <input id="tab-verify-input" type="text"
+
+                                class="w-full bg-black border-2 border-slate-700 focus:border-emerald-500 rounded-lg px-4 py-3 text-white mono text-center text-lg uppercase tracking-widest outline-none transition mb-2"
+
+                                placeholder="e.g. R-abc123"
+
+                                oninput="this.value = this.value.toUpperCase()">
+
+                            <p id="tab-verify-error" class="text-red-400 text-xs mb-4 hidden">❌ Incorrect code. Try again.</p>
+
+                            <div class="flex gap-3 mt-2">
+
+                <button onclick="confirmTabOpen()" id="tab-verify-confirm"
+
+                    class="flex-1 font-black py-3 rounded-lg text-sm uppercase tracking-widest transition bg-emerald-600 hover:bg-emerald-500 text-white">
+
+                    <span class="mi mi-sm">check_circle</span> CONFIRM &amp; OPEN TAB
+
+                </button>
+
+                                <button onclick="closeTabVerify()"
+
+                                    class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 px-4 rounded-lg text-sm transition">
+
+                                    Cancel
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>

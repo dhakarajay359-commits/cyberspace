@@ -1,0 +1,4 @@
+                if (data.success) {
+                    currentLobbyId = data.lobby_id;
+                    myTeam = team; 
+                    isHost = true;

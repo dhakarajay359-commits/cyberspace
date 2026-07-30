@@ -1,0 +1,113 @@
+            <!-- Target Preview (Shared) -->
+
+            <div id="target-preview-area" class="col-span-4 bg-slate-900 border border-slate-700 rounded flex flex-col overflow-hidden">
+
+                <!-- Dynamically rendered by JS -->
+
+            </div>
+
+            
+
+            <!-- ─── RED TEAM CONTROLS ─── -->
+
+            <div id="red-controls" class="col-span-8 bg-[#0a0000] border border-red-900/50 rounded flex flex-col hidden">
+
+                <div class="bg-red-950/60 p-2 text-xs font-mono text-red-400 flex items-center justify-between gap-2 border-b border-red-900/40">
+
+                    <div class="flex items-center gap-2"><span class="pulse-live"></span> OFFENSIVE CONSOLE — <span id="red-scenario-label" class="text-orange-400 font-bold">Loading...</span></div>
+
+                    <span class="text-slate-500 text-[10px]">root@kali-linux ~</span>
+
+                </div>
+
+                <!-- Attack Arsenal Tabs -->
+
+                <div class="flex gap-1 px-3 pt-2 border-b border-red-900/30">
+
+                    <button onclick="switchAttackTab('payloads')" id="tab-payloads" class="attack-tab active-tab px-3 py-1 text-xs mono rounded-t font-bold">⚡ PAYLOADS</button>
+
+                    <button onclick="switchAttackTab('terminal')" id="tab-terminal" class="attack-tab px-3 py-1 text-xs mono rounded-t font-bold">💻 TERMINAL</button>
+
+                </div>
+
+                <!-- Payloads Panel -->
+
+                <div id="panel-payloads" class="flex-1 overflow-y-auto p-3 space-y-3">
+
+                    <!-- Dynamically filled by renderAttackArsenal() -->
+
+                </div>
+
+                <!-- Terminal Panel -->
+
+                <div id="panel-terminal" class="flex-1 flex-col hidden">
+
+                    <div id="red-terminal-output" class="flex-1 p-4 font-mono text-emerald-500 text-sm overflow-y-auto h-48">
+
+                        <div class="text-slate-500">> Establishing connection to target... OK</div>
+
+                        <div class="text-slate-500">> Ready. Use payload buttons or type manually below.</div>
+
+                    </div>
+
+                </div>
+
+                <!-- Input Bar (always visible) -->
+
+                <div class="p-3 border-t border-red-900/50 flex gap-2 bg-black/40">
+
+                    <span class="text-red-500 font-mono text-sm mt-2">root@kali:~#</span>
+
+                    <!-- Right: Defense Arsenal -->
+
+                    <div class="w-1/2 flex flex-col overflow-y-auto p-3 space-y-2">
+
+                        <div class="text-[10px] text-slate-500 mono uppercase tracking-widest mb-1">Defense Arsenal</div>
+
+                        <!-- Dynamically filled by renderDefenseArsenal() -->
+
+                        <div id="defense-arsenal">
+
+                            <!-- filled by JS -->
+
+                        </div>
+
+                        <!-- Custom Rule -->
+
+                        <div class="mt-auto pt-3 border-t border-slate-800">
+
+                            <p class="text-[10px] text-slate-500 mb-1 mono uppercase">Custom Regex Rule</p>
+
+                            <div class="flex gap-2">
+
+                                <input type="text" id="blue-custom-rule" 
+
+                                    class="flex-1 bg-black border border-slate-700 p-2 rounded text-white mono text-xs outline-none focus:border-blue-500 transition" 
+
+                                    placeholder="e.g. .*UNION.*SELECT.*">
+
+                                <button onclick="deployCustomRule()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded text-xs font-bold transition">DEPLOY</button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    </div>
+
+    
+
+
+
+<script src="{{ url_for('static', filename='js/compete.js') }}"></script>
+
+{% endblock %}

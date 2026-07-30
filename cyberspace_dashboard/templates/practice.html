@@ -1,0 +1,797 @@
+{% set active_page = "practice" %}
+{% extends "base.html" %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        :root{
+            --bg:#0a0d14;--surface:#0f1320;--elevated:#161b2e;
+            --border:rgba(255,255,255,0.07);--green:#39d353;--green-dim:#10b981;
+            --purple:#a371f7;--blue:#79c0ff;--red:#f85149;--yellow:#e3b341;
+            --text:#e6edf3;--muted:#6e7681;--dim:#3d4451;
+        }
+        html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+        body::before{content:'';position:fixed;inset:0;
+            background-image:radial-gradient(circle at 15% 25%,rgba(139,92,246,.05) 0%,transparent 45%),
+            radial-gradient(circle at 85% 75%,rgba(16,185,129,.04) 0%,transparent 45%),
+            linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
+            linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
+            background-size:100% 100%,100% 100%,48px 48px,48px 48px;pointer-events:none;z-index:0}
+        #matrix-bg{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.04}
+        @keyframes scanline{0%{top:-3px}100%{top:100%}}
+        body::after{content:'';position:fixed;left:0;right:0;height:3px;
+            background:linear-gradient(to right,transparent,rgba(163,113,247,.5),rgba(16,185,129,.5),transparent);
+            z-index:9999;pointer-events:none;animation:scanline 10s linear infinite}
+        #app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh}
+        /* TOPBAR */
+        #topbar{height:50px;background:rgba(15,19,32,.95);border-bottom:1px solid var(--border);
+            display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;backdrop-filter:blur(12px)}
+        .topbar-nav{display:flex;align-items:center;gap:1px}
+        .nav-btn{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;
+            font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;transition:all .15s}
+        .nav-btn:hover{background:rgba(255,255,255,.06);color:var(--text)}
+        .nav-btn.active{color:#fff;background:rgba(139,92,246,.15)}
+        .nav-div{width:1px;height:20px;background:var(--border);margin:0 8px}
+        .logo{display:flex;align-items:center;gap:8px;font-weight:900;font-size:14px;color:#fff;text-decoration:none}
+        .logo-icon{width:28px;height:28px;background:linear-gradient(135deg,#a371f7,#39d353);
+            border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
+        .status-badge{margin-left:auto;display:flex;align-items:center;gap:8px}
+        .status-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);
+            border:1px solid var(--border);border-radius:20px;padding:4px 10px;
+            font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);transition:all .3s}
+        .status-pill.connected{border-color:rgba(57,211,83,.4);color:#39d353;background:rgba(57,211,83,.06)}
+        .status-pill.error{border-color:rgba(248,81,73,.4);color:#f85149;background:rgba(248,81,73,.06)}
+        .dot{width:7px;height:7px;border-radius:50%;background:var(--yellow);flex-shrink:0}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+        .dot.connecting{animation:blink .9s step-end infinite}
+        .dot.connected{background:var(--green);box-shadow:0 0 6px rgba(57,211,83,.7);animation:none}
+        .dot.error{background:var(--red);box-shadow:0 0 6px rgba(248,81,73,.7);animation:none}
+        .act-btn{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:6px;
+            font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace;cursor:pointer;
+            transition:all .15s;border:1px solid var(--border);background:transparent;color:var(--muted)}
+        .act-btn:hover{border-color:rgba(255,255,255,.15);color:#fff;background:rgba(255,255,255,.05)}
+        /* TERMINAL SHELL */
+        #terminal-shell{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+        /* TAB BAR */
+        #tab-bar{height:36px;background:rgba(13,17,23,.9);border-bottom:1px solid var(--border);
+            display:flex;align-items:stretch;overflow-x:auto;flex-shrink:0}
+        #tab-bar::-webkit-scrollbar{height:0}
+        .term-tab{display:flex;align-items:center;gap:7px;padding:0 14px;font-size:12px;
+            font-family:'JetBrains Mono',monospace;color:var(--muted);cursor:pointer;
+            border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;
+            user-select:none;flex-shrink:0}
+        .term-tab:hover:not(.active){background:rgba(255,255,255,.04);color:#8b949e}
+        .term-tab.active{color:var(--text);border-bottom-color:var(--purple);background:rgba(22,27,46,.8)}
+        .tab-x{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;
+            justify-content:center;font-size:10px;opacity:0;transition:opacity .15s,background .15s;cursor:pointer}
+        .term-tab:hover .tab-x,.term-tab.active .tab-x{opacity:1}
+        .tab-x:hover{background:rgba(248,81,73,.2);color:var(--red)}
+        .tab-add{display:flex;align-items:center;justify-content:center;width:36px;color:var(--muted);
+            cursor:pointer;font-size:18px;transition:all .15s;flex-shrink:0}
+        .tab-add:hover{color:#fff;background:rgba(255,255,255,.06)}
+        /* TERMINAL CONTAINER */
+        #terminal-container{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;background:#0d1117}
+        /* TITLEBAR */
+        #term-titlebar{display:flex;align-items:center;padding:0 14px;height:38px;
+            background:rgba(22,27,46,.95);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+        .tl{display:flex;align-items:center;gap:7px}
+        .tl-btn{width:13px;height:13px;border-radius:50%;cursor:pointer;transition:filter .15s;
+            display:flex;align-items:center;justify-content:center;font-size:8px;color:transparent}
+        .tl-btn:hover{filter:brightness(1.2);color:rgba(0,0,0,.6)}
+        .tl-r{background:#ff5f57}.tl-y{background:#febc2e}.tl-g{background:#28c840}
+        .tb-mid{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;
+            font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+        .tb-mid .hi{color:var(--text)}.tb-mid .sp{color:var(--dim)}
+        .tb-right{display:flex;align-items:center;gap:8px;font-size:10px;
+            font-family:'JetBrains Mono',monospace;color:var(--dim)}
+        /* XTERM */
+        #xterm-mount{flex:1;min-height:0;padding:4px 2px}
+        .xterm{height:100%;width:100%}
+        .xterm-viewport{overflow-y:auto!important}
+        /* STATUS BAR */
+        #statusbar{display:flex;align-items:center;justify-content:space-between;padding:0 14px;
+            height:24px;background:rgba(10,13,20,.95);border-top:1px solid var(--border);
+            font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--dim);flex-shrink:0}
+        .sb-l,.sb-r{display:flex;align-items:center;gap:10px}
+        .c-g{color:var(--green-dim)}.c-p{color:var(--purple)}.c-b{color:var(--blue)}.c-y{color:var(--yellow)}
+        /* SCROLLBAR */
+        ::-webkit-scrollbar{width:5px;height:5px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+        ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.2)}
+        /* COMMAND PALETTE */
+        #cmd-palette{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);
+            backdrop-filter:blur(6px);display:none;align-items:flex-start;justify-content:center;padding-top:15vh}
+        #cmd-palette.open{display:flex}
+        .pal-box{width:520px;background:rgba(22,27,46,.98);border:1px solid rgba(139,92,246,.4);
+            border-radius:14px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.05)}
+        .pal-inp{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}
+        .pal-inp .pi{color:var(--purple);font-size:16px}
+        #pal-input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:14px;
+            font-family:'JetBrains Mono',monospace}
+        .pal-list{padding:8px;max-height:320px;overflow-y:auto}
+        .pal-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;
+            cursor:pointer;transition:background .1s}
+        .pal-item:hover,.pal-item.sel{background:rgba(139,92,246,.15)}
+        .pi-icon{font-size:14px;width:24px;text-align:center}
+        .pi-text{flex:1}
+        .pi-title{font-size:13px;font-weight:600;color:var(--text)}
+        .pi-desc{font-size:11px;color:var(--muted);margin-top:1px}
+        .pi-kbd{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--dim);
+            background:rgba(255,255,255,.06);padding:2px 7px;border-radius:4px;white-space:nowrap}
+        .pal-sec{padding:6px 12px 2px;font-size:10px;font-weight:700;letter-spacing:.08em;
+            color:var(--dim);text-transform:uppercase}
+        #pal-footer{border-top:1px solid var(--border);padding:8px 14px;display:flex;
+            align-items:center;gap:12px;font-size:10px;color:var(--dim);font-family:'JetBrains Mono',monospace}
+        #pal-footer kbd{background:rgba(255,255,255,.06);border-radius:4px;padding:2px 6px;color:var(--muted)}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        .fade-up{animation:fadeUp .3s ease forwards}
+
+        /* ── RIGHT-CLICK CONTEXT MENU ── */
+        #ctx-menu {
+            position: fixed; z-index: 9999;
+            background: rgba(15,19,32,0.97);
+            border: 1px solid rgba(163,113,247,0.35);
+            border-radius: 10px;
+            padding: 5px;
+            min-width: 190px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04);
+            backdrop-filter: blur(12px);
+            display: none;
+            font-family: 'JetBrains Mono', monospace;
+            animation: fadeUp 0.15s ease;
+        }
+        .ctx-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 12px; border-radius: 7px;
+            font-size: 12px; color: #c9d1d9;
+            cursor: pointer; gap: 12px;
+            transition: background 0.1s;
+        }
+        .ctx-item:hover { background: rgba(163,113,247,0.18); color: #fff; }
+        .ctx-item.disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+        .ctx-icon { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+        .ctx-label { flex: 1; }
+        .ctx-kbd {
+            font-size: 9px; color: rgba(110,118,129,0.9);
+            background: rgba(255,255,255,0.06); border-radius: 4px;
+            padding: 2px 6px; white-space: nowrap; flex-shrink: 0;
+        }
+        .ctx-sep { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 5px; }
+
+        /* ── CLIPBOARD TOAST ── */
+        #clip-toast {
+            position: fixed; bottom: 40px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(22,27,46,0.95);
+            border: 1px solid rgba(57,211,83,0.4);
+            border-radius: 8px; padding: 8px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px; color: #39d353;
+            z-index: 9999; opacity: 0;
+            transition: all 0.3s ease; pointer-events: none;
+        }
+        #clip-toast.show {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
+
+        /* kbd hint in topbar */
+        .kbd-hint {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px; color: rgba(110,118,129,0.7);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 4px; padding: 2px 6px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+<canvas id="matrix-bg"></canvas>
+
+<!-- Command Palette -->
+<div id="cmd-palette" onclick="if(event.target===this)closePal()">
+    <div class="pal-box fade-up">
+        <div class="pal-inp">
+            <span class="pi">⌘</span>
+            <input id="pal-input" type="text" placeholder="Search commands…" autocomplete="off"
+                oninput="filterPal(this.value)" onkeydown="palKey(event)">
+        </div>
+        <div class="pal-list" id="pal-list"></div>
+        <div id="pal-footer">
+            <span><kbd>↑↓</kbd> navigate</span>
+            <span><kbd>Enter</kbd> run</span>
+            <span><kbd>Esc</kbd> close</span>
+        </div>
+    </div>
+</div>
+
+<div id="app">
+    <div id="topbar">
+        <a href="/" class="logo"><div class="logo-icon">🛡</div>Cyber<span style="color:#a371f7">space</span></a>
+        <div class="nav-div"></div>
+        
+        <div class="status-badge">
+            <div class="status-pill" id="conn-pill">
+                <div class="dot connecting" id="conn-dot"></div>
+                <span id="conn-txt">Connecting…</span>
+            </div>
+            <div class="nav-div"></div>
+            <button class="act-btn" onclick="ctxCopy()" title="Copy (Ctrl+Shift+C)">📋 Copy</button>
+            <button class="act-btn" onclick="ctxPaste()" title="Paste (Ctrl+Shift+V)">📌 Paste</button>
+            <button class="act-btn" onclick="clearTerm()" title="Clear (Ctrl+L)">🗑 Clear</button>
+            <button class="act-btn" onclick="newTab()" title="New Tab (Ctrl+Shift+T)">+ New Tab</button>
+            <button class="act-btn" onclick="openPal()" title="Commands (Ctrl+K)">⌘ Commands</button>
+            <button class="act-btn" id="fs-btn" onclick="toggleFS()" title="Fullscreen (F11)">⛶ Fullscreen</button>
+        </div>
+    </div>
+
+    <div id="terminal-shell">
+        <div id="tab-bar">
+            <div class="tab-add" onclick="newTab()" title="New tab">+</div>
+        </div>
+
+        <div id="terminal-container">
+            <div id="term-titlebar">
+                <div class="tl">
+                    <div class="tl-btn tl-r" onclick="closeActiveTab()" title="Close">✕</div>
+                    <div class="tl-btn tl-y" onclick="clearTerm()" title="Clear">−</div>
+                    <div class="tl-btn tl-g" onclick="toggleFS()" title="Fullscreen">+</div>
+                </div>
+                <div class="tb-mid">
+                    <span style="color:#a371f7">⬡</span>
+                    <span class="hi" id="tb-user">root</span>
+                    <span class="sp">@</span>
+                    <span class="hi" id="tb-host">kali</span>
+                    <span class="sp">—</span>
+                    <span id="tb-shell">bash</span>
+                    <span class="sp">—</span>
+                    <span style="color:#56d1f0" id="tb-size">220×50</span>
+                </div>
+                <div class="tb-right">
+                    <span style="color:#6e7681">node-pty</span>
+                    <span style="color:#3d4451">|</span>
+                    <span id="tb-container">shell</span>
+                </div>
+            </div>
+
+            <div id="xterm-mount"></div>
+
+            <div id="statusbar">
+                <div class="sb-l">
+                    <span class="c-p">⬡ Kali Linux</span>
+                    <span style="color:#3d4451">|</span>
+                    <span>
+                        <span id="sb-dot" style="width:6px;height:6px;display:inline-block;vertical-align:middle;border-radius:50%;background:#e3b341"></span>
+                        <span id="sb-txt" style="margin-left:5px">Initializing…</span>
+                    </span>
+                </div>
+                <div class="sb-r">
+                    <span class="c-g">UTF-8</span>
+                    <span style="color:#3d4451">|</span>
+                    <span>bash</span>
+                    <span style="color:#3d4451">|</span>
+                    <span class="c-b">xterm-256color</span>
+                    <span style="color:#3d4451">|</span>
+                    <span class="c-y" id="sb-uptime">0:00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Right-Click Context Menu -->
+<div id="ctx-menu">
+    <div class="ctx-item" onclick="ctxCopy()">
+        <span class="ctx-icon">📋</span>
+        <span class="ctx-label">Copy</span>
+        <span class="ctx-kbd">Ctrl+Shift+C</span>
+    </div>
+    <div class="ctx-item" onclick="ctxPaste()" id="ctx-paste-btn">
+        <span class="ctx-icon">📌</span>
+        <span class="ctx-label">Paste</span>
+        <span class="ctx-kbd">Ctrl+Shift+V</span>
+    </div>
+    <div class="ctx-item" onclick="ctxSelectAll()">
+        <span class="ctx-icon">◻</span>
+        <span class="ctx-label">Select All</span>
+        <span class="ctx-kbd">Ctrl+A</span>
+    </div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="ctxCopyCmd()">
+        <span class="ctx-icon">⎘</span>
+        <span class="ctx-label">Copy as Command</span>
+        <span class="ctx-kbd">Ctrl+Shift+X</span>
+    </div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="clearTerm()">
+        <span class="ctx-icon">🗑</span>
+        <span class="ctx-label">Clear Terminal</span>
+        <span class="ctx-kbd">Ctrl+L</span>
+    </div>
+    <div class="ctx-item" onclick="newTab()">
+        <span class="ctx-icon">➕</span>
+        <span class="ctx-label">New Tab</span>
+        <span class="ctx-kbd">Ctrl+Shift+T</span>
+    </div>
+</div>
+
+<!-- Clipboard Toast -->
+<div id="clip-toast">✓ Copied to clipboard</div>
+
+<script>
+const BACKEND = 'http://localhost:3001';
+const START   = Date.now();
+let sessions = [], activeIdx = 0;
+
+const KALI = {
+    background:'#0d1117',foreground:'#c9d1d9',cursor:'#a371f7',cursorAccent:'#0d1117',
+    selectionBackground:'rgba(163,113,247,0.25)',
+    black:'#0d1117',red:'#f85149',green:'#39d353',yellow:'#e3b341',blue:'#79c0ff',
+    magenta:'#a371f7',cyan:'#56d1f0',white:'#c9d1d9',
+    brightBlack:'#6e7681',brightRed:'#ff7b72',brightGreen:'#56d364',brightYellow:'#e3b341',
+    brightBlue:'#79c0ff',brightMagenta:'#d2a8ff',brightCyan:'#87deea',brightWhite:'#f0f6fc',
+};
+
+// ── Create terminal session ──
+function createSession(idx) {
+    const mount = document.getElementById('xterm-mount');
+    mount.innerHTML = '';
+
+    const term = new Terminal({
+        theme: KALI,
+        fontFamily:"'JetBrains Mono','Fira Code','Cascadia Code',monospace",
+        fontSize:14, fontWeight:'400', fontWeightBold:'700',
+        lineHeight:1.45, letterSpacing:0.4,
+        cursorBlink:true, cursorStyle:'block',
+        scrollback:50000, allowTransparency:true,
+        macOptionIsMeta:true,
+        // Disable browser right-click interception so our menu takes over
+        rightClickSelectsWord:false,
+    });
+    const fit = new FitAddon.FitAddon();
+    const wl  = new WebLinksAddon.WebLinksAddon();
+    term.loadAddon(fit); term.loadAddon(wl);
+    term.open(mount);
+    setTimeout(() => { fit.fit(); updSize(term); }, 60);
+
+    // Welcome
+    term.writeln('\x1b[38;5;141m╔══════════════════════════════════════════════════════════════════╗\x1b[0m');
+    term.writeln('\x1b[38;5;141m║\x1b[0m  \x1b[38;5;82m🐉 CYBERSPACE — KALI LINUX TERMINAL\x1b[0m                          \x1b[38;5;141m║\x1b[0m');
+    term.writeln('\x1b[38;5;141m║\x1b[0m  \x1b[38;5;245mReal PTY shell via node-pty + Socket.IO\x1b[0m                      \x1b[38;5;141m║\x1b[0m');
+    term.writeln('\x1b[38;5;141m╚══════════════════════════════════════════════════════════════════╝\x1b[0m');
+    term.writeln('\x1b[38;5;245m  Connecting to ' + BACKEND + '…\x1b[0m\r\n');
+
+    const socket = io(BACKEND, { transports:['websocket','polling'], reconnection:true, reconnectionDelay:1500 });
+    const sess = { term, fit, socket, sessionId:null, idx, status:'connecting', container:null };
+    sessions[idx] = sess;
+
+    socket.on('connect', () => {
+        if (!sess.sessionId) {
+            const d = fit.proposeDimensions() || { cols:220, rows:50 };
+            socket.emit('terminal:create', { cols:d.cols, rows:d.rows });
+        }
+        setConn('connecting','Starting shell…');
+    });
+
+    socket.on('terminal:creating', ({ message }) => {
+        term.writeln('\x1b[38;5;220m  ⏳ ' + message + '\x1b[0m');
+    });
+
+    socket.on('terminal:ready', (data) => {
+        sess.sessionId = data.sessionId;
+        sess.status = 'connected';
+        sess.container = data.container;
+        setTabDot(idx,'connected');
+        setConn('connected','Connected');
+        setSB('connected','Shell active — ' + data.sessionId.substring(0,8));
+        term.writeln('\x1b[38;5;82m  ✓ Session: ' + data.sessionId.substring(0,8) + '\x1b[0m');
+        if (data.container) {
+            term.writeln('\x1b[38;5;67m  🐳 Container: ' + data.container.name + '\x1b[0m');
+            document.getElementById('tb-container').textContent = data.container.name;
+        }
+        term.writeln('');
+        term.focus();
+    });
+
+    socket.on('terminal:output', ({ sessionId, data }) => {
+        if (sessionId === sess.sessionId) term.write(data);
+    });
+
+    socket.on('terminal:exit', ({ sessionId, exitCode }) => {
+        if (sessionId === sess.sessionId) {
+            term.writeln('\x1b[38;5;196m\r\n  [Process exited — code ' + exitCode + ']\x1b[0m');
+            term.writeln('\x1b[38;5;245m  Open a new tab to start a fresh session.\x1b[0m');
+            sess.status = 'disconnected';
+            setTabDot(idx,'error'); setSB('error','Session ended');
+        }
+    });
+
+    socket.on('terminal:error', ({ message }) => {
+        term.writeln('\x1b[38;5;196m  [ERROR] ' + message + '\x1b[0m');
+        sess.status = 'error'; setTabDot(idx,'error');
+    });
+
+    socket.on('disconnect', () => {
+        if (idx === activeIdx) { setConn('error','Backend offline'); setSB('error','Disconnected'); }
+        term.writeln('\r\n\x1b[38;5;196m  [Disconnected]\x1b[0m');
+        setTabDot(idx,'error'); sess.status = 'disconnected';
+    });
+
+    socket.on('connect_error', () => setConn('error','Cannot reach port 3001'));
+
+    // ── Override xterm key handling to support Kali shortcuts ──
+    term.attachCustomKeyEventHandler((e) => {
+        // Ctrl+Shift+C → Copy selection
+        if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+            e.preventDefault();
+            ctxCopy();
+            return false;
+        }
+        // Ctrl+Shift+V → Paste
+        if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+            e.preventDefault();
+            ctxPaste();
+            return false;
+        }
+        // Ctrl+Shift+T → New Tab
+        if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+            e.preventDefault();
+            newTab();
+            return false;
+        }
+        // Ctrl+Shift+W → Close Tab
+        if (e.ctrlKey && e.shiftKey && e.key === 'W') {
+            e.preventDefault();
+            closeActiveTab();
+            return false;
+        }
+        // Ctrl+Shift+N → New Tab
+        if (e.ctrlKey && e.shiftKey && e.key === 'N') {
+            e.preventDefault();
+            newTab();
+            return false;
+        }
+        // Ctrl+Shift+X → Copy as command
+        if (e.ctrlKey && e.shiftKey && e.key === 'X') {
+            e.preventDefault();
+            ctxCopyCmd();
+            return false;
+        }
+        // Ctrl+L → Clear terminal
+        if (e.ctrlKey && !e.shiftKey && e.key === 'l') {
+            e.preventDefault();
+            clearTerm();
+            return false;
+        }
+        // Ctrl+K → Command palette
+        if (e.ctrlKey && !e.shiftKey && e.key === 'k') {
+            e.preventDefault();
+            openPal();
+            return false;
+        }
+        return true; // pass everything else through to the terminal
+    });
+
+    // Right-click → context menu
+    mount.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showCtxMenu(e.clientX, e.clientY);
+    });
+
+    term.onData(d => {
+        if (sess.sessionId) sess.socket.emit('terminal:input', { sessionId:sess.sessionId, data:d });
+    });
+
+    const onResize = () => {
+        if (idx !== activeIdx) return;
+        fit.fit(); updSize(term);
+        if (sess.sessionId) sess.socket.emit('terminal:resize', { sessionId:sess.sessionId, cols:term.cols, rows:term.rows });
+    };
+    window.addEventListener('resize', onResize);
+    return sess;
+}
+
+// ── Tabs ──
+function renderTabs() {
+    const bar = document.getElementById('tab-bar');
+    const add = bar.querySelector('.tab-add');
+    bar.querySelectorAll('.term-tab').forEach(e => e.remove());
+    sessions.forEach((s, i) => {
+        const tab = document.createElement('div');
+        tab.className = 'term-tab' + (i === activeIdx ? ' active' : '');
+        tab.id = 'tab-' + i;
+
+        const dot = document.createElement('span');
+        dot.id = 'tdot-' + i;
+        dot.style.cssText = 'width:6px;height:6px;display:inline-block;border-radius:50%;background:#e3b341;flex-shrink:0';
+
+        const lbl = document.createElement('span');
+        lbl.textContent = 'Terminal ' + (i + 1);
+
+        const x = document.createElement('span');
+        x.className = 'tab-x'; x.textContent = '×';
+        x.addEventListener('click', e => { e.stopPropagation(); closeTab(i); });
+
+        tab.appendChild(dot); tab.appendChild(lbl); tab.appendChild(x);
+        tab.addEventListener('click', () => switchTab(i));
+        bar.insertBefore(tab, add);
+        if (s) applyDotStyle(dot, s.status);
+    });
+}
+
+function applyDotStyle(dot, status) {
+    if (status === 'connected') { dot.style.background='#39d353'; dot.style.boxShadow='0 0 5px rgba(57,211,83,.7)'; }
+    else if (status === 'error' || status === 'disconnected') { dot.style.background='#f85149'; dot.style.boxShadow='0 0 5px rgba(248,81,73,.7)'; }
+    else { dot.style.background='#e3b341'; dot.style.boxShadow='none'; }
+}
+
+function setTabDot(idx, status) {
+    const dot = document.getElementById('tdot-' + idx);
+    if (dot) applyDotStyle(dot, status);
+}
+
+function switchTab(idx) {
+    if (idx === activeIdx) return;
+    activeIdx = idx; renderTabs();
+    const mount = document.getElementById('xterm-mount');
+    mount.innerHTML = '';
+    const s = sessions[idx];
+    if (s) { s.term.open(mount); setTimeout(() => { s.fit.fit(); updSize(s.term); s.term.focus(); }, 60); }
+}
+
+function newTab() {
+    const idx = sessions.length;
+    sessions.push(null); activeIdx = idx;
+    renderTabs(); createSession(idx);
+}
+
+function closeTab(idx) {
+    const s = sessions[idx];
+    if (s) {
+        if (s.sessionId) s.socket.emit('terminal:close', { sessionId: s.sessionId });
+        s.socket.disconnect(); s.term.dispose();
+    }
+    sessions.splice(idx, 1);
+    if (!sessions.length) { newTab(); return; }
+    activeIdx = Math.min(activeIdx, sessions.length - 1);
+    switchTab(activeIdx);
+}
+function closeActiveTab() { closeTab(activeIdx); }
+
+// ── Status helpers ──
+function setConn(status, text) {
+    const pill = document.getElementById('conn-pill');
+    const dot  = document.getElementById('conn-dot');
+    const tx   = document.getElementById('conn-txt');
+    pill.className = 'status-pill ' + (status === 'connected' ? 'connected' : status === 'error' ? 'error' : '');
+    dot.className  = 'dot ' + status;
+    tx.textContent = text;
+}
+function setSB(status, text) {
+    const dot = document.getElementById('sb-dot');
+    const tx  = document.getElementById('sb-txt');
+    if (status === 'connected') { dot.style.cssText='width:6px;height:6px;display:inline-block;vertical-align:middle;border-radius:50%;background:#39d353;box-shadow:0 0 6px rgba(57,211,83,.7)'; }
+    else if (status === 'error') { dot.style.cssText='width:6px;height:6px;display:inline-block;vertical-align:middle;border-radius:50%;background:#f85149;box-shadow:0 0 6px rgba(248,81,73,.7)'; }
+    else { dot.style.cssText='width:6px;height:6px;display:inline-block;vertical-align:middle;border-radius:50%;background:#e3b341'; }
+    tx.textContent = text;
+}
+function updSize(term) {
+    const el = document.getElementById('tb-size');
+    if (el && term) el.textContent = term.cols + '×' + term.rows;
+}
+
+// ── Clipboard & Copy/Paste ──
+function showClipToast(msg) {
+    const t = document.getElementById('clip-toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function ctxCopy() {
+    hideCtxMenu();
+    const s = sessions[activeIdx];
+    if (!s) return;
+    const sel = s.term.getSelection();
+    if (sel && sel.length > 0) {
+        navigator.clipboard.writeText(sel).then(() => {
+            showClipToast('✓ Copied to clipboard');
+        }).catch(() => {
+            // Fallback for browsers that block clipboard
+            const ta = document.createElement('textarea');
+            ta.value = sel;
+            ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select(); document.execCommand('copy');
+            document.body.removeChild(ta);
+            showClipToast('✓ Copied to clipboard');
+        });
+    } else {
+        showClipToast('⚠ No text selected');
+    }
+}
+
+async function ctxPaste() {
+    hideCtxMenu();
+    const s = sessions[activeIdx];
+    if (!s || !s.sessionId) return;
+    try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+            s.socket.emit('terminal:input', { sessionId: s.sessionId, data: text });
+            showClipToast('✓ Pasted ' + text.length + ' chars');
+        }
+    } catch {
+        // Fallback: prompt user since clipboard read requires focus + permission
+        const text = prompt('Paste text (browser blocked clipboard access):');
+        if (text) s.socket.emit('terminal:input', { sessionId: s.sessionId, data: text });
+    }
+}
+
+function ctxSelectAll() {
+    hideCtxMenu();
+    const s = sessions[activeIdx];
+    if (!s) return;
+    s.term.selectAll();
+}
+
+function ctxCopyCmd() {
+    hideCtxMenu();
+    const s = sessions[activeIdx];
+    if (!s) return;
+    const sel = s.term.getSelection();
+    if (sel) {
+        const cmd = sel.trim();
+        navigator.clipboard.writeText(cmd).then(() => showClipToast('✓ Copied: ' + cmd.substring(0, 30))).catch(() => {});
+    }
+}
+
+// ── Right-Click Context Menu ──
+function showCtxMenu(x, y) {
+    const menu = document.getElementById('ctx-menu');
+    menu.style.display = 'block';
+    // Make sure it doesn't go off screen
+    const mw = 200, mh = 280;
+    menu.style.left = (x + mw > window.innerWidth ? x - mw : x) + 'px';
+    menu.style.top  = (y + mh > window.innerHeight ? y - mh : y) + 'px';
+}
+function hideCtxMenu() {
+    document.getElementById('ctx-menu').style.display = 'none';
+}
+document.addEventListener('click', () => hideCtxMenu());
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideCtxMenu(); });
+
+// ── Actions ──
+function clearTerm() { const s = sessions[activeIdx]; if (s) s.term.clear(); }
+function toggleFS() {
+    const c = document.getElementById('terminal-container');
+    const b = document.getElementById('fs-btn');
+    if (!document.fullscreenElement) {
+        c.requestFullscreen().then(() => { b.textContent='✕ Exit Full'; setTimeout(()=>{ const s=sessions[activeIdx]; if(s){s.fit.fit();updSize(s.term);} },100); });
+    } else { document.exitFullscreen().then(() => { b.textContent='⛶ Fullscreen'; }); }
+}
+function sendCmd(cmd) {
+    const s = sessions[activeIdx];
+    if (s && s.sessionId) s.socket.emit('terminal:input', { sessionId:s.sessionId, data:cmd });
+}
+function focusTerm() { const s = sessions[activeIdx]; if (s) s.term.focus(); }
+
+// ── Command Palette ──
+const PAL_CMDS = [
+    { section:'Terminal', items:[
+        { icon:'➕', title:'New Tab', desc:'Open a fresh terminal session', kbd:'Ctrl+T', fn:()=>newTab() },
+        { icon:'🗑', title:'Clear Terminal', desc:'Clear current terminal screen', fn:()=>clearTerm() },
+        { icon:'⛶', title:'Fullscreen', desc:'Toggle fullscreen mode', kbd:'F11', fn:()=>toggleFS() },
+        { icon:'✕', title:'Close Tab', desc:'Close the active terminal tab', fn:()=>closeActiveTab() },
+    ]},
+    { section:'Quick Commands', items:[
+        { icon:'📁', title:'ls -la', desc:'List files with permissions', fn:()=>sendCmd('ls -la\r') },
+        { icon:'📍', title:'pwd', desc:'Print working directory', fn:()=>sendCmd('pwd\r') },
+        { icon:'👤', title:'whoami', desc:'Show current user', fn:()=>sendCmd('whoami\r') },
+        { icon:'🌐', title:'ifconfig / ip a', desc:'Show network interfaces', fn:()=>sendCmd('ifconfig 2>/dev/null || ip a\r') },
+        { icon:'📋', title:'uname -a', desc:'Show kernel/system info', fn:()=>sendCmd('uname -a\r') },
+        { icon:'💾', title:'df -h', desc:'Disk usage', fn:()=>sendCmd('df -h\r') },
+        { icon:'📊', title:'free -h', desc:'Memory usage', fn:()=>sendCmd('free -h\r') },
+        { icon:'🔍', title:'ps aux', desc:'Show all running processes', fn:()=>sendCmd('ps aux\r') },
+        { icon:'🔐', title:'Find SUID', desc:'Find SUID binaries', fn:()=>sendCmd('find / -perm -4000 2>/dev/null\r') },
+        { icon:'🗄', title:'nmap --help', desc:'Show Nmap help', fn:()=>sendCmd('nmap --help\r') },
+        { icon:'🐍', title:'python3 --version', desc:'Check Python version', fn:()=>sendCmd('python3 --version\r') },
+        { icon:'📜', title:'history', desc:'Show command history', fn:()=>sendCmd('history\r') },
+    ]},
+    { section:'Navigation', items:[
+        { icon:'🗔', title:'Dashboard', desc:'Main dashboard', fn:()=>{ window.location.href='/dashboard'; } },
+        { icon:'📖', title:'Learn / Academy', desc:'Go to learning section', fn:()=>{ window.location.href='/academy'; } },
+    ]},
+];
+
+let palSelIdx = 0, palFlat = [];
+function buildPalFlat(q) {
+    palFlat = [];
+    PAL_CMDS.forEach(g => g.items.forEach(item => {
+        if (!q || item.title.toLowerCase().includes(q.toLowerCase()) || item.desc.toLowerCase().includes(q.toLowerCase()))
+            palFlat.push(item);
+    }));
+}
+function renderPal(q) {
+    buildPalFlat(q);
+    const list = document.getElementById('pal-list'); list.innerHTML = '';
+    let gi = 0;
+    PAL_CMDS.forEach(g => {
+        const items = g.items.filter(i => !q || i.title.toLowerCase().includes(q.toLowerCase()) || i.desc.toLowerCase().includes(q.toLowerCase()));
+        if (!items.length) return;
+        const sec = document.createElement('div'); sec.className='pal-sec'; sec.textContent=g.section; list.appendChild(sec);
+        items.forEach(item => {
+            const idx = gi++;
+            const el = document.createElement('div');
+            el.className = 'pal-item' + (idx === palSelIdx ? ' sel' : '');
+            el.innerHTML = '<div class="pi-icon">' + item.icon + '</div><div class="pi-text"><div class="pi-title">' + item.title + '</div><div class="pi-desc">' + item.desc + '</div></div>' + (item.kbd ? '<div class="pi-kbd">' + item.kbd + '</div>' : '');
+            el.addEventListener('click', () => runPalItem(item));
+            list.appendChild(el);
+        });
+    });
+}
+function openPal() {
+    palSelIdx = 0;
+    document.getElementById('pal-input').value = '';
+    renderPal('');
+    document.getElementById('cmd-palette').classList.add('open');
+    setTimeout(() => document.getElementById('pal-input').focus(), 50);
+}
+function closePal() { document.getElementById('cmd-palette').classList.remove('open'); focusTerm(); }
+function filterPal(q) { palSelIdx = 0; renderPal(q); }
+function palKey(e) {
+    if (e.key==='Escape') { closePal(); return; }
+    if (e.key==='ArrowDown') { palSelIdx=Math.min(palSelIdx+1,palFlat.length-1); renderPal(document.getElementById('pal-input').value); }
+    else if (e.key==='ArrowUp') { palSelIdx=Math.max(palSelIdx-1,0); renderPal(document.getElementById('pal-input').value); }
+    else if (e.key==='Enter') { if(palFlat[palSelIdx]) runPalItem(palFlat[palSelIdx]); }
+}
+function runPalItem(item) { closePal(); setTimeout(() => item.fn(), 80); }
+
+// ── Matrix ──
+function initMatrix() {
+    const c = document.getElementById('matrix-bg'), ctx = c.getContext('2d');
+    let drops = [];
+    const resize = () => { c.width=window.innerWidth; c.height=window.innerHeight; drops=Array.from({length:Math.floor(c.width/18)},()=>Math.random()*c.height/16); };
+    window.addEventListener('resize', resize); resize();
+    setInterval(() => {
+        ctx.fillStyle='rgba(10,13,20,.08)'; ctx.fillRect(0,0,c.width,c.height);
+        ctx.fillStyle='#a371f7'; ctx.font='11px JetBrains Mono,monospace';
+        drops.forEach((y,i)=>{ ctx.fillText('01'[Math.floor(Math.random()*2)],i*18,y*16); if(y*16>c.height&&Math.random()>.975)drops[i]=0; drops[i]+=.4; });
+    }, 55);
+}
+
+// ── Uptime ──
+setInterval(() => {
+    const s=Math.floor((Date.now()-START)/1000), m=Math.floor(s/60), sec=s%60;
+    const el=document.getElementById('sb-uptime'); if(el) el.textContent=m+':'+(sec<10?'0':'')+sec;
+}, 1000);
+
+// ── Global Keyboard shortcuts (outside xterm focus) ──
+document.addEventListener('keydown', e => {
+    // Palette
+    if ((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key==='k') { e.preventDefault(); openPal(); }
+    // New tab
+    if ((e.ctrlKey||e.metaKey) && e.shiftKey && (e.key==='T'||e.key==='t')) { e.preventDefault(); newTab(); }
+    // Close tab
+    if ((e.ctrlKey||e.metaKey) && e.shiftKey && (e.key==='W'||e.key==='w')) { e.preventDefault(); closeActiveTab(); }
+    // Fullscreen
+    if (e.key==='F11') { e.preventDefault(); toggleFS(); }
+    // Copy (global)
+    if (e.ctrlKey && e.shiftKey && e.key==='C') { e.preventDefault(); ctxCopy(); }
+});
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+    initMatrix();
+    renderTabs();
+    newTab();
+});
+</script>
+
+{% endblock %}
