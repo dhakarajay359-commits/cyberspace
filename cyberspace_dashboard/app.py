@@ -1224,13 +1224,17 @@ def yt_stream(video_id):
             return jsonify({"success": True, "url": cached_url})
 
     import yt_dlp
+    import os
     ydl_opts = {
         'format': 'best', 
         'quiet': True, 
-        'no_warnings': True,
-        # 2. Free Solution: Client Spoofing (Mobile IPs are rarely blocked)
-        'extractor_args': {'youtube': ['player_client=android']}
+        'no_warnings': True
     }
+    
+    # 3. Free Solution: Add cookies if available to bypass datacenter IP bans
+    if os.path.exists('cookies.txt'):
+        ydl_opts['cookiefile'] = 'cookies.txt'
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
