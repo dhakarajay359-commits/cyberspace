@@ -242,9 +242,7 @@
         <button class="cipher-btn active" onclick="setCipher('caesar', this)">
             <span class="cipher-icon">🔄</span> Caesar Cipher
         </button>
-        <button class="cipher-btn" onclick="setCipher('dyn_caesar', this)">
-            <span class="cipher-icon">📈</span> Dynamic Caesar (AP)
-        </button>
+
         <button class="cipher-btn" onclick="setCipher('vigenere', this)">
             <span class="cipher-icon">🔤</span> Vigenère Cipher
         </button>
@@ -339,35 +337,40 @@
             
             <div class="flowchart-step" id="fc-step-1">
                 <div class="io-label" style="color:var(--text-main);">Step 1</div>
-                <select id="fc-algo-1" onchange="updateFlowchartUI(1)"></select>
+                <div style="background: var(--bg-darker); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; font-family: 'Space Mono', monospace; width: 100%; margin-bottom: 15px;">Caesar Cipher</div>
+                <input type="hidden" id="fc-algo-1" value="caesar">
                 <div id="fc-key-label-1" class="io-label" style="font-size:0.85rem; color:var(--text-muted);">Key:</div>
                 <input type="text" id="fc-key-1" style="width:100%;">
             </div>
             
             <div class="flowchart-step" id="fc-step-2">
                 <div class="io-label" style="color:var(--text-main);">Step 2</div>
-                <select id="fc-algo-2" onchange="updateFlowchartUI(2)"></select>
+                <div style="background: var(--bg-darker); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; font-family: 'Space Mono', monospace; width: 100%; margin-bottom: 15px;">Reverse String</div>
+                <input type="hidden" id="fc-algo-2" value="custom_reverse">
                 <div id="fc-key-label-2" class="io-label" style="font-size:0.85rem; color:var(--text-muted); display:none;">Key:</div>
                 <input type="text" id="fc-key-2" style="width:100%; display:none;">
             </div>
 
             <div class="flowchart-step" id="fc-step-3">
                 <div class="io-label" style="color:var(--text-main);">Step 3</div>
-                <select id="fc-algo-3" onchange="updateFlowchartUI(3)"></select>
+                <div style="background: var(--bg-darker); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; font-family: 'Space Mono', monospace; width: 100%; margin-bottom: 15px;">Swap Adjacent Letters</div>
+                <input type="hidden" id="fc-algo-3" value="custom_swap">
                 <div id="fc-key-label-3" class="io-label" style="font-size:0.85rem; color:var(--text-muted); display:none;">Key:</div>
                 <input type="text" id="fc-key-3" style="width:100%; display:none;">
             </div>
 
             <div class="flowchart-step" id="fc-step-4">
                 <div class="io-label" style="color:var(--text-main);">Step 4</div>
-                <select id="fc-algo-4" onchange="updateFlowchartUI(4)"></select>
+                <div style="background: var(--bg-darker); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; font-family: 'Space Mono', monospace; width: 100%; margin-bottom: 15px;">Playfair Cipher</div>
+                <input type="hidden" id="fc-algo-4" value="playfair">
                 <div id="fc-key-label-4" class="io-label" style="font-size:0.85rem; color:var(--text-muted); display:none;">Key:</div>
                 <input type="text" id="fc-key-4" style="width:100%; display:none;">
             </div>
 
             <div class="flowchart-step" id="fc-step-5">
                 <div class="io-label" style="color:var(--text-main);">Step 5</div>
-                <select id="fc-algo-5" onchange="updateFlowchartUI(5)"></select>
+                <div style="background: var(--bg-darker); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; font-family: 'Space Mono', monospace; width: 100%; margin-bottom: 15px;">Dynamic Salting</div>
+                <input type="hidden" id="fc-algo-5" value="custom_salt">
                 <div id="fc-key-label-5" class="io-label" style="font-size:0.85rem; color:var(--text-muted); display:none;">Key:</div>
                 <input type="text" id="fc-key-5" style="width:100%; display:none;">
             </div>
@@ -424,8 +427,7 @@
     let stepState = { active: false, action: 'encrypt', currentStep: 1, data: '' };
 
     const snippets = {
-        caesar: { python: `// Caesar Logic`, js: `// Caesar Logic`, cpp: `// Caesar Logic` },
-        dyn_caesar: { python: `// Dyn Caesar`, js: `// Dyn Caesar`, cpp: `// Dyn Caesar` },
+        caesar: { python: `// Caesar`, js: `// Caesar`, cpp: `#include <stdio.h>\n\nint main() {\n  char text[100];\n  int shift;\n  printf("Enter string: ");\n  gets(text);\n  printf("Enter shift: ");\n  scanf("%d", &shift);\n  for(int i=0; text[i]!='\\0'; i++) {\n    text[i] = text[i] + shift;\n  }\n  printf("Result: %s", text);\n  return 0;\n}` },
         playfair: { python: `// Playfair`, js: `// Playfair`, cpp: `// Playfair` },
         vigenere: { python: `// Vigenere`, js: `// Vigenere`, cpp: `// Vigenere` },
         rot13: { python: `// ROT13`, js: `// ROT13`, cpp: `// ROT13` },
@@ -441,7 +443,6 @@
     const cipherInfo = {
         'none': { title: 'None (Skip)', showKey: false },
         'caesar': { title: 'Caesar Cipher', type: 'SUBSTITUTION', key: 'Shift (Int)', def: '3', showKey: true },
-        'dyn_caesar': { title: 'Dynamic Caesar (AP)', type: 'SUBSTITUTION', key: 'Format (a,d)', def: '3,1', showKey: true },
         'vigenere': { title: 'Vigenère Cipher', type: 'SUBSTITUTION', key: 'Keyword', def: 'KEY', showKey: true },
         'playfair': { title: 'Playfair Cipher', type: 'SUBSTITUTION', key: 'Keyword', def: 'MATRIX', showKey: true },
         'rot13': { title: 'ROT13', type: 'SUBSTITUTION', showKey: false },
@@ -461,7 +462,6 @@
         <option value="none">None (Skip)</option>
         <option disabled>--- Standard Ciphers ---</option>
         <option value="caesar">Caesar Cipher</option>
-        <option value="dyn_caesar">Dynamic Caesar (AP)</option>
         <option value="vigenere">Vigenère Cipher</option>
         <option value="playfair">Playfair Cipher</option>
         <option value="rot13">ROT13</option>
@@ -483,15 +483,6 @@
         document.getElementById('hybrid-algo-1').value = 'caesar';
         document.getElementById('hybrid-algo-2').value = 'base64';
 
-        // Flowchart Dropdowns
-        for(let i=1; i<=5; i++) {
-            document.getElementById('fc-algo-'+i).innerHTML = algoOptionsHTML;
-        }
-        document.getElementById('fc-algo-1').value = 'dyn_caesar';
-        document.getElementById('fc-algo-2').value = 'custom_reverse';
-        document.getElementById('fc-algo-3').value = 'custom_swap';
-        document.getElementById('fc-algo-4').value = 'playfair';
-        document.getElementById('fc-algo-5').value = 'custom_salt';
         
         for(let i=1; i<=5; i++) updateFlowchartUI(i);
         updateHybridUI();
@@ -757,13 +748,7 @@
             const shift = parseInt(key, 10);
             if (isNaN(shift)) throw new Error("Caesar: Shift must be an integer.");
             return caesarCipher(text, action === 'encrypt' ? shift : -shift);
-        } else if (algo === 'dyn_caesar') {
-            const parts = (key||"").split(',');
-            if(parts.length !== 2) throw new Error("Dynamic Caesar: Key must be 'a,d' format (e.g. 3,1).");
-            const a = parseInt(parts[0].trim(), 10);
-            const d = parseInt(parts[1].trim(), 10);
-            if(isNaN(a) || isNaN(d)) throw new Error("Dynamic Caesar: Both 'a' and 'd' must be integers.");
-            return dynCaesarCipher(text, a, d, action);
+
         } else if (algo === 'playfair') {
             if (!key || !/^[a-zA-Z]+$/.test(key)) throw new Error("Playfair: Keyword must be alphabetic.");
             return playfairCipher(text, key, action);
@@ -843,17 +828,7 @@
         });
     }
     
-    function dynCaesarCipher(str, a, d, action) {
-        let idx = 0;
-        return str.replace(/[a-zA-Z]/g, c => {
-            let shift = a + (idx * d);
-            if (action === 'decrypt') shift = -shift;
-            shift = ((shift % 26) + 26) % 26;
-            const base = c <= 'Z' ? 65 : 97;
-            idx++; 
-            return String.fromCharCode(((c.charCodeAt(0) - base + shift) % 26) + base);
-        });
-    }
+
 
     function playfairCipher(str, key, action) {
         let matrix = [];
@@ -1057,8 +1032,7 @@
 
     const algoImplementations = {
         c: {
-            caesar: `void apply_caesar(char* data) {\n    for(int i=0; data[i] != '\\0'; i++) {\n        if(data[i] >= 'a' && data[i] <= 'z') data[i] = ((data[i] - 'a' + 3) % 26) + 'a';\n        else if(data[i] >= 'A' && data[i] <= 'Z') data[i] = ((data[i] - 'A' + 3) % 26) + 'A';\n    }\n}`,
-            dyn_caesar: `void apply_dyn_caesar(char* data) {\n    for(int i=0; data[i] != '\\0'; i++) {\n        if(data[i] >= 'a' && data[i] <= 'z') data[i] = ((data[i] - 'a' + 3) % 26) + 'a';\n        else if(data[i] >= 'A' && data[i] <= 'Z') data[i] = ((data[i] - 'A' + 3) % 26) + 'A';\n    }\n}`,
+            caesar: `void apply_caesar(char* data, int shift) {\n    int i = 0;\n    while(data[i] != '\\0') {\n        if(data[i] >= 'a' && data[i] <= 'z') {\n            data[i] = data[i] + shift;\n            if(data[i] > 'z') data[i] -= 26;\n            else if(data[i] < 'a') data[i] += 26;\n        }\n        else if(data[i] >= 'A' && data[i] <= 'Z') {\n            data[i] = data[i] + shift;\n            if(data[i] > 'Z') data[i] -= 26;\n            else if(data[i] < 'A') data[i] += 26;\n        }\n        i++;\n    }\n}`,
             custom_reverse: `void apply_custom_reverse(char* data) {\n    int len = strlen(data);\n    for(int i = 0; i < len / 2; i++) {\n        char temp = data[i];\n        data[i] = data[len - i - 1];\n        data[len - i - 1] = temp;\n    }\n}`,
             custom_swap: `void apply_custom_swap(char* data) {\n    int len = strlen(data);\n    for(int i = 0; i < len - 1; i += 2) {\n        char temp = data[i];\n        data[i] = data[i+1];\n        data[i+1] = temp;\n    }\n}`,
             custom_salt: `void apply_custom_salt(char* data) {\n    for(int i = 0; data[i] != '\\0'; i++) {\n        data[i] = data[i] ^ 5;\n    }\n}`,
@@ -1066,7 +1040,6 @@
         },
         java: {
             caesar: `    public static String applyCaesar(String data) {\n        StringBuilder sb = new StringBuilder();\n        for(char c : data.toCharArray()) {\n            if(Character.isLetter(c)) {\n                char base = Character.isLowerCase(c) ? 'a' : 'A';\n                sb.append((char)(((c - base + 3) % 26) + base));\n            } else sb.append(c);\n        }\n        return sb.toString();\n    }`,
-            dyn_caesar: `    public static String applyDyn_caesar(String data) {\n        StringBuilder sb = new StringBuilder();\n        for(char c : data.toCharArray()) {\n            if(Character.isLetter(c)) {\n                char base = Character.isLowerCase(c) ? 'a' : 'A';\n                sb.append((char)(((c - base + 3) % 26) + base));\n            } else sb.append(c);\n        }\n        return sb.toString();\n    }`,
             custom_reverse: `    public static String applyCustom_reverse(String data) {\n        return new StringBuilder(data).reverse().toString();\n    }`,
             custom_swap: `    public static String applyCustom_swap(String data) {\n        char[] arr = data.toCharArray();\n        for(int i = 0; i < arr.length - 1; i += 2) {\n            char temp = arr[i]; arr[i] = arr[i+1]; arr[i+1] = temp;\n        }\n        return new String(arr);\n    }`,
             custom_salt: `    public static String applyCustom_salt(String data) {\n        char[] arr = data.toCharArray();\n        for(int i = 0; i < arr.length; i++) arr[i] = (char)(arr[i] ^ 5);\n        return new String(arr);\n    }`,
@@ -1074,7 +1047,6 @@
         },
         python: {
             caesar: `def apply_caesar(data):\n    res = []\n    for c in data:\n        if c.isalpha():\n            base = ord('a') if c.islower() else ord('A')\n            res.append(chr((ord(c) - base + 3) % 26 + base))\n        else:\n            res.append(c)\n    return "".join(res)`,
-            dyn_caesar: `def apply_dyn_caesar(data):\n    res = []\n    for c in data:\n        if c.isalpha():\n            base = ord('a') if c.islower() else ord('A')\n            res.append(chr((ord(c) - base + 3) % 26 + base))\n        else:\n            res.append(c)\n    return "".join(res)`,
             custom_reverse: `def apply_custom_reverse(data):\n    return data[::-1]`,
             custom_swap: `def apply_custom_swap(data):\n    arr = list(data)\n    for i in range(0, len(arr) - 1, 2):\n        arr[i], arr[i+1] = arr[i+1], arr[i]\n    return "".join(arr)`,
             custom_salt: `def apply_custom_salt(data):\n    return "".join(chr(ord(c) ^ 5) for c in data)`,
@@ -1082,7 +1054,6 @@
         },
         cpp: {
             caesar: `string apply_caesar(string data) {\n    for(int i = 0; i < data.length(); i++) {\n        if(isalpha(data[i])) {\n            char base = islower(data[i]) ? 'a' : 'A';\n            data[i] = ((data[i] - base + 3) % 26) + base;\n        }\n    }\n    return data;\n}`,
-            dyn_caesar: `string apply_dyn_caesar(string data) {\n    for(int i = 0; i < data.length(); i++) {\n        if(isalpha(data[i])) {\n            char base = islower(data[i]) ? 'a' : 'A';\n            data[i] = ((data[i] - base + 3) % 26) + base;\n        }\n    }\n    return data;\n}`,
             custom_reverse: `string apply_custom_reverse(string data) {\n    string res = data;\n    int len = res.length();\n    for(int i = 0; i < len / 2; i++) swap(res[i], res[len - i - 1]);\n    return res;\n}`,
             custom_swap: `string apply_custom_swap(string data) {\n    string res = data;\n    for(int i = 0; i < res.length() - 1; i += 2) swap(res[i], res[i+1]);\n    return res;\n}`,
             custom_salt: `string apply_custom_salt(string data) {\n    for(int i = 0; i < data.length(); i++) data[i] = data[i] ^ 5;\n    return data;\n}`,

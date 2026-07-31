@@ -499,7 +499,10 @@
                                     <span class="radar-box !w-4 !h-4 !border"></span> FIND MATCH
                                 </button>
                                 <button onclick="document.getElementById('lobby-modal').classList.remove('hidden')" class="bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold py-3 px-6 rounded-lg mono text-sm border border-slate-700 transition">
-                                    CUSTOM LOBBY
+                                    HOST LOBBY
+                                </button>
+                                <button onclick="document.getElementById('lobby-modal').classList.remove('hidden'); document.getElementById('join-invite-code').focus();" class="bg-blue-900/30 text-blue-400 hover:bg-blue-900/60 font-bold py-3 px-6 rounded-lg mono text-sm border border-blue-500/50 transition">
+                                    JOIN BY CODE
                                 </button>
                             </div>
                         </div>
@@ -621,15 +624,23 @@
         </div>
     </main>
 
+    <!-- Game Paused Overlay -->
+    <div id="paused-overlay" class="hidden fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 backdrop-blur-md">
+        <div class="text-amber-500 text-6xl font-black mb-4 tracking-[10px] animate-pulse">GAME PAUSED</div>
+        <div class="text-slate-300 text-xl font-mono mb-2">Opponent Disconnected</div>
+        <div class="text-slate-500 text-sm font-mono">Waiting for all players to return to the environment...</div>
+    </div>
+
 <!-- LOBBY MODAL -->
 
     <div id="lobby-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
 
         <div class="glass-panel p-8 w-[600px] max-w-[90vw] relative">
 
+            <button onclick="document.getElementById('lobby-modal').classList.add('hidden')" class="absolute top-4 left-4 text-slate-500 hover:text-white font-mono font-bold flex items-center gap-1"><span class="mi">arrow_back</span> BACK</button>
             <button onclick="document.getElementById('lobby-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-500 hover:text-white">✕</button>
 
-            <h2 class="text-2xl font-black text-emerald-400 mb-6 mono text-center">CREATE / JOIN LOBBY</h2>
+            <h2 class="text-2xl font-black text-emerald-400 mb-6 mt-4 mono text-center">CREATE / JOIN LOBBY</h2>
 
             
 
@@ -680,6 +691,15 @@
                         </div>
 
                         <div class="mb-4">
+                            <label class="block text-slate-400 text-sm mb-1">Difficulty Level</label>
+                            <select id="create-difficulty" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm">
+                                <option value="1">Level 1 (Beginner - Raw Payload Clues)</option>
+                                <option value="2">Level 2 (Intermediate - Category Clues)</option>
+                                <option value="3">Level 3 (Advanced - Symptom Clues)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
                             <label class="block text-slate-400 text-sm mb-1">Max Players (Per Team)</label>
                             <select id="create-max-players" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm">
                                 <option value="2">1v1</option>
@@ -712,13 +732,25 @@
 
                         <h3 class="text-white font-bold mb-4">Join Existing</h3>
 
-                        <input type="text" id="join-invite-code" placeholder="Enter Invite Code" class="w-full bg-black border border-slate-700 text-white rounded p-2 mb-4 text-center mono uppercase tracking-widest">
+                        <!-- Join via Lobby ID (Leader) -->
+                        <div class="mb-4 p-4 bg-slate-800/50 rounded border border-slate-700">
+                            <h4 class="text-emerald-400 font-bold mb-2 text-sm text-left">Join as Leader</h4>
+                            <input type="text" id="join-lobby-id" placeholder="Enter Lobby ID" class="w-full bg-black border border-slate-700 text-white rounded p-2 mb-2 text-center mono uppercase tracking-widest text-sm">
+                            <select id="join-team" class="w-full bg-black border border-slate-700 text-white rounded p-2 mb-3 text-sm">
+                                <option value="blue">Blue Team (Defense)</option>
+                                <option value="red">Red Team (Offense)</option>
+                            </select>
+                            <button onclick="joinLobby('leader')" class="w-full bg-emerald-900/30 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black py-2 rounded mono font-bold transition text-xs">JOIN WAITING ROOM</button>
+                        </div>
 
-                        <p class="text-slate-400 text-xs text-left mb-4">The invite code determines whether you join as an attacker or defender.</p>
+                        <!-- Join via Invite Code (Player) -->
+                        <div class="p-4 bg-slate-800/50 rounded border border-slate-700">
+                            <h4 class="text-blue-400 font-bold mb-2 text-sm text-left">Join as Player</h4>
+                            <input type="text" id="join-invite-code" placeholder="Enter Team ID (Invite Code)" class="w-full bg-black border border-slate-700 text-white rounded p-2 mb-3 text-center mono uppercase tracking-widest text-sm">
+                            <button onclick="joinLobby('player')" class="w-full bg-blue-900/30 text-blue-400 border border-blue-500/50 hover:bg-blue-500 hover:text-black py-2 rounded mono font-bold transition text-xs">JOIN TERMINAL DIRECTLY</button>
+                        </div>
 
                     </div>
-
-                    <button onclick="joinLobby()" class="w-full bg-emerald-900/30 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black py-2 rounded mono font-bold transition">JOIN MATCH</button>
 
                 </div>
 
@@ -751,22 +783,20 @@
 
                         <div class="h-6 w-px bg-slate-700"></div>
 
-                        <p class="text-red-400 mono text-sm font-bold tracking-widest">RED TEAM INVITE: <span id="display-red-code" class="text-white bg-red-900/50 border border-red-500/30 px-2 py-1 rounded select-all cursor-pointer hover:bg-red-800/80 transition"></span></p>
-
-                        <p class="text-blue-400 mono text-sm font-bold tracking-widest">BLUE TEAM INVITE: <span id="display-blue-code" class="text-white bg-blue-900/50 border border-blue-500/30 px-2 py-1 rounded select-all cursor-pointer hover:bg-blue-800/80 transition"></span></p>
+                        <p id="red-invite-container" class="text-red-400 mono text-sm font-bold tracking-widest hidden">RED TEAM INVITE: <span id="display-red-code" class="text-white bg-red-900/50 border border-red-500/30 px-2 py-1 rounded select-all cursor-pointer hover:bg-red-800/80 transition"></span></p>
+                        <p id="blue-invite-container" class="text-blue-400 mono text-sm font-bold tracking-widest hidden">BLUE TEAM INVITE: <span id="display-blue-code" class="text-white bg-blue-900/50 border border-blue-500/30 px-2 py-1 rounded select-all cursor-pointer hover:bg-blue-800/80 transition"></span></p>
 
                     </div>
 
                 </div>
 
-                <div class="flex gap-4">
-
+                <div class="flex gap-4 items-center">
+                    <button onclick="goBackToLobbyModal()" class="bg-transparent border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 text-sm py-3 px-6 rounded-lg font-bold mono transition flex items-center gap-2"><span class="mi">arrow_back</span> BACK</button>
                     <button onclick="document.getElementById('how-to-play-modal').classList.add('show')" class="bg-indigo-900/40 border border-indigo-500 text-indigo-300 text-sm py-3 px-8 rounded-lg font-bold mono hover:bg-indigo-800/60 transition flex items-center gap-2"><span class="mi">map</span> HOW IT WORKS</button>
-
-                    <button onclick="startMatch()" class="btn-neon text-lg py-3 px-12 rounded-lg font-black mono animate-pulse">DEPLOY</button>
-
+                    <!-- Auto-deploy indicator -->
+                    <div id="deploy-status-indicator" class="text-amber-400 font-bold mono bg-amber-900/30 border border-amber-500/50 py-3 px-6 rounded-lg animate-pulse">AWAITING PLAYERS</div>
+                    <button id="force-start-btn" onclick="forceStartMatch()" class="hidden bg-indigo-600 hover:bg-indigo-500 text-white py-3 px-6 rounded-lg font-bold mono shadow-[0_0_15px_rgba(79,70,229,0.5)]">FORCE DEPLOY</button>
                 </div>
-
             </header>
 
             
@@ -830,7 +860,7 @@
     <div id="how-to-play-modal">
 
         <div class="glass-panel p-8 w-[850px] max-w-[95vw] relative bg-[#050a0f] border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
-
+            <button onclick="document.getElementById('how-to-play-modal').classList.remove('show')" class="absolute top-4 left-4 text-slate-500 hover:text-white font-mono font-bold flex items-center gap-1"><span class="mi">arrow_back</span> BACK</button>
             <button onclick="document.getElementById('how-to-play-modal').classList.remove('show')" class="absolute top-4 right-4 text-slate-500 hover:text-white">✕</button>
 
             <h2 class="text-2xl font-black text-indigo-400 mb-6 mono flex items-center gap-3 border-b border-indigo-900/50 pb-4"><span class="mi">map</span> HOW IT WORKS: OMNI-SANDBOX</h2>
@@ -952,13 +982,17 @@
     <div id="battleground-ui" class="hidden fixed inset-0 z-[110] bg-[#000] p-4 flex flex-col">
 
         <header class="flex justify-between items-center bg-slate-900 border border-slate-700 p-3 rounded mb-4">
-
              <div class="text-emerald-400 mono font-bold">MATCH IN PROGRESS // LOBBY: <span id="bg-lobby-id"></span></div>
+             
+             <!-- Target Status Indicator -->
+             <div id="target-status-indicator" class="flex-1 text-center mx-4">
+                <span id="target-status-badge" class="bg-blue-900/50 text-blue-400 border border-blue-500/50 px-6 py-2 rounded-lg font-black tracking-[5px] mono text-lg shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-300">
+                    [ TARGET PACKED ]
+                </span>
+             </div>
 
-             <div class="text-amber-400 mono text-xl animate-pulse">04:59</div>
-
-             <button onclick="window.location.reload()" class="bg-red-900/50 text-red-400 px-4 py-1 rounded text-sm hover:bg-red-500 hover:text-black transition">SURRENDER</button>
-
+             <div class="text-amber-400 mono text-xl animate-pulse whitespace-nowrap" id="battleground-timer-display">04:59</div>
+             <button onclick="surrenderMatch()" class="bg-red-900/50 text-red-400 px-4 py-1 rounded text-sm hover:bg-red-500 hover:text-black transition ml-4">SURRENDER</button>
         </header>
 
         
@@ -1028,7 +1062,7 @@
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                            <div id="blue-traffic" class="font-mono text-xs text-slate-300 whitespace-pre-wrap leading-relaxed"></div>
+                            <div id="blue-traffic" class="font-mono text-xs text-slate-300 whitespace-pre-wrap leading-relaxed select-text cursor-text"></div>
                         </div>
                         <div class="h-1/3 border-t border-blue-900/30 flex flex-col bg-black/60">
                             <div class="p-3 bg-blue-950/30 text-[10px] text-blue-300 mono uppercase tracking-widest border-b border-blue-900/30">Active Defense Rules</div>
@@ -1047,6 +1081,27 @@
                         <!-- Dynamically filled by renderDefenseArsenal() -->
                         <div id="defense-arsenal" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                             <!-- filled by JS -->
+                        </div>
+
+                        <!-- SOC Analysis Tools -->
+                        <div class="p-4 border-t border-blue-900/30 bg-black/60 space-y-3">
+                            <p class="text-[10px] text-blue-300 mono uppercase tracking-widest font-bold"><span class="mi mi-sm mr-1">policy</span> SOC Analysis Tools</p>
+                            
+                            <!-- Decrypt Tool -->
+                            <div class="flex gap-2">
+                                <input type="text" id="blue-decrypt-input" 
+                                    class="flex-1 bg-black/50 border border-blue-800/50 p-2 rounded text-blue-100 mono text-[10px] outline-none focus:border-cyan-500 transition shadow-inner" 
+                                    placeholder="Paste Encrypted Payload Here...">
+                                <button onclick="decryptPayload()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded text-[10px] font-bold tracking-wider transition shadow-lg shadow-indigo-900/50">DECRYPT</button>
+                            </div>
+                            
+                            <!-- Verify Tool -->
+                            <div class="flex gap-2">
+                                <input type="text" id="blue-verify-input" 
+                                    class="flex-1 bg-black/50 border border-blue-800/50 p-2 rounded text-blue-100 mono text-[10px] outline-none focus:border-cyan-500 transition shadow-inner" 
+                                    placeholder="Paste Decrypted Attack Signature Here...">
+                                <button onclick="verifyAttack()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded text-[10px] font-bold tracking-wider transition shadow-lg shadow-emerald-900/50">VERIFY</button>
+                            </div>
                         </div>
 
                         <!-- Custom Rule -->

@@ -1,5 +1,6 @@
 Flask>=3.0.0
-bandit
-pip-audit
 requests
-dnspython
+yt-dlp
+python-dotenv
+google-genai
+gunicorn

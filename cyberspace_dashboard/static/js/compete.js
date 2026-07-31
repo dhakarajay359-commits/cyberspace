@@ -92,12 +92,23 @@ let currentLobbyId = null;
 
             }
 
-        })();
+        
+    // Send presence heartbeat every 1 second
+    setInterval(() => {
+        if (currentLobbyId && myTeam) {
+            fetch('/api/game/ping', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({lobby_id: currentLobbyId, team: myTeam})
+            }).catch(() => {});
+        }
+    }, 1000);
+})();
+
 
 
 
 function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
-
             document.getElementById('lobby-modal').classList.add('hidden');
 
             document.getElementById('waiting-room').classList.remove('hidden');
@@ -367,40 +378,85 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
 
 
         async function pollLobbyStatus() {
-
             if(!currentLobbyId) return;
-
             try {
-
                 const res = await fetch(`/api/lobby/status/${currentLobbyId}`);
-
                 const data = await res.json();
-
                 if(data.success) {
-
                     if (data.red_invite_code) document.getElementById('display-red-code').textContent = data.red_invite_code;
-
                     if (data.blue_invite_code) document.getElementById('display-blue-code').textContent = data.blue_invite_code;
-
                     if (data.scenario) window.currentScenario = data.scenario;
-
                     if (data.custom_desc) window.customDesc = data.custom_desc;
-
                     
+                    // Show only our team's invite code unless we are host (host can see both to give out initially)
+                    if (isHost || (data.is_leader && myTeam === 'red')) {
+                        document.getElementById('red-invite-container').classList.remove('hidden');
+                    }
+                    if (isHost || (data.is_leader && myTeam === 'blue')) {
+                        document.getElementById('blue-invite-container').classList.remove('hidden');
+                    }
+                    
+                    // Show force start button to leaders
+                    if (data.is_leader) {
+                        document.getElementById('force-start-btn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('force-start-btn').classList.add('hidden');
+                    }
+                    
+                    const getStatusBadge = (isPresent) => isPresent 
+                        ? `<span class="text-xs font-bold bg-emerald-900/50 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded ml-2 shadow-[0_0_8px_rgba(52,211,153,0.4)]">[CONNECTED]</span>` 
+                        : `<span class="text-xs bg-slate-800 text-slate-400 border border-slate-600 px-2 py-0.5 rounded ml-2">[WAITING]</span>`;
+
+                    const getLeaderBadge = (username) => {
+                        let isRedLeader = data.leaders && data.leaders.red === username;
+                        let isBlueLeader = data.leaders && data.leaders.blue === username;
+                        return (isRedLeader || isBlueLeader) ? `<span class="text-xs text-amber-400 ml-2 font-bold">[LEADER]</span>` : '';
+                    };
 
                     const redList = document.getElementById('red-team-list');
-
-                    redList.innerHTML = data.members.red.map(u => `<li><span class="text-slate-500">></span> ${u}</li>`).join('');
-
+                    redList.innerHTML = data.members.red.map(u => `<li><span class="text-slate-500">></span> ${u} ${getLeaderBadge(u)} ${getStatusBadge(data.presence?.red)}</li>`).join('');
                     
-
                     const blueList = document.getElementById('blue-team-list');
+                    blueList.innerHTML = data.members.blue.map(u => `<li><span class="text-slate-500">></span> ${u} ${getLeaderBadge(u)} ${getStatusBadge(data.presence?.blue)}</li>`).join('');
 
-                    blueList.innerHTML = data.members.blue.map(u => `<li><span class="text-slate-500">></span> ${u}</li>`).join('');
-                    if (data.status === 'active') startMatch();
+                    const indicator = document.getElementById('deploy-status-indicator');
+                    if(indicator) {
+                        if (data.presence?.red && data.presence?.blue) {
+                            indicator.className = 'text-emerald-400 font-bold mono bg-emerald-900/30 border border-emerald-500/50 py-3 px-6 rounded-lg animate-pulse';
+                            indicator.textContent = 'DEPLOYING...';
+                        } else {
+                            indicator.className = 'text-amber-400 font-bold mono bg-amber-900/30 border border-amber-500/50 py-3 px-6 rounded-lg animate-pulse';
+                            indicator.textContent = 'AWAITING PLAYERS';
+                        }
+                    }
+
+                    if (data.status === 'active' && !document.getElementById('countdown-overlay')) startMatch();
                 }
             } catch(e) { console.error('Polling error', e); }
+        }
 
+        
+        function goBackToLobbyModal() {
+            if (lobbyPollInterval) clearInterval(lobbyPollInterval);
+            document.getElementById('waiting-room').classList.add('hidden');
+            document.getElementById('battleground-ui').classList.add('hidden');
+            document.getElementById('lobby-modal').classList.remove('hidden');
+            
+            // Clear current active state locally so they can join/create a new lobby cleanly
+            currentLobbyId = null;
+            myTeam = null;
+            isHost = false;
+        }
+        
+        async function forceStartMatch() {
+
+            try {
+                await fetch('/api/lobby/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ lobby_id: currentLobbyId })
+                });
+            } catch(e) { console.error('Failed to force start', e); }
         }
 
 
@@ -414,59 +470,55 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
         async function startMatch() {
 
             if (isHost) {
-
                 try {
-
                     await fetch('/api/lobby/start', {
-
                         method: 'POST',
-
                         headers: {'Content-Type': 'application/json'},
-
                         body: JSON.stringify({ lobby_id: currentLobbyId })
-
                     });
-
                 } catch(e) { console.error('Failed to start lobby', e); return; }
-
             }
-
-            
 
             if(lobbyPollInterval) clearInterval(lobbyPollInterval);
-
             document.getElementById('waiting-room').classList.add('hidden');
-
             document.getElementById('battleground-ui').classList.remove('hidden');
-
             document.getElementById('bg-lobby-id').textContent = currentLobbyId;
 
-            
-
             if (myTeam === 'red') {
-
                 document.getElementById('red-controls').classList.remove('hidden');
-
                 document.getElementById('blue-controls').classList.add('hidden');
-
                 renderAttackArsenal();
-
             } else if (myTeam === 'blue' || myTeam === 'host') {
-
                 document.getElementById('blue-controls').classList.remove('hidden');
-
                 document.getElementById('red-controls').classList.add('hidden');
-
                 renderDefenseArsenal();
-
             }
-
-            
-
             renderTargetPreview();
 
-            gamePollInterval = setInterval(pollGameState, 1000);
+            // 10 Second Deployment Countdown
+            const countdownOverlay = document.createElement('div');
+            countdownOverlay.id = 'countdown-overlay';
+            countdownOverlay.className = 'fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center font-mono text-emerald-500';
+            countdownOverlay.innerHTML = `
+                <div class="text-3xl md:text-5xl font-black mb-6 tracking-[8px] animate-pulse">DEPLOYING TERMINALS</div>
+                <div id="countdown-timer" class="text-7xl md:text-9xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]">10</div>
+                <div class="mt-8 text-slate-400 text-sm md:text-base animate-pulse">Establishing secure connection to target infrastructure...</div>
+                <div class="mt-2 text-slate-500 text-xs">Synchronizing Red and Blue team environments</div>
+            `;
+            document.body.appendChild(countdownOverlay);
 
+            let timeLeft = 10;
+            const timerInterval = setInterval(() => {
+                timeLeft--;
+                const timerEl = document.getElementById('countdown-timer');
+                if(timerEl) timerEl.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    if(countdownOverlay.parentNode) countdownOverlay.remove();
+                    // START REAL-TIME POLLING (300ms for instant updates)
+                    gamePollInterval = setInterval(pollGameState, 300);
+                }
+            }, 1000);
         }
 
 
@@ -490,11 +542,15 @@ async function renderAttackArsenal() {
         </div>`;
 
         data.tools.forEach(p => {
+            let levelColor = "text-emerald-400 border-emerald-900/50";
+            if (p.level === "Intermediate") levelColor = "text-amber-400 border-amber-900/50";
+            if (p.level === "Advanced") levelColor = "text-purple-400 border-purple-900/50";
+            
             const card = document.createElement('div');
-            card.className = 'payload-card';
+            card.className = `payload-card border ${levelColor} bg-black/40`;
             card.innerHTML = `
             <div class="flex items-center justify-between mb-1">
-                <span class="text-red-300 text-xs font-bold mono">${p.label}</span>
+                <span class="text-red-300 text-xs font-bold mono">${p.label} <span class="text-[9px] ${levelColor} px-1 border rounded ml-1">${p.level}</span></span>
                 <span class="text-slate-600 text-[10px]">${p.tip}</span>
             </div>
             <button class="payload-btn" onclick="firePayload(this, \`${p.payload.replace(/`/g,'\\`')}\`)">▶ ${p.payload}</button>`;
@@ -566,11 +622,15 @@ async function renderDefenseArsenal() {
         arsenal.innerHTML = '';
 
         data.tools.forEach(d => {
+            let levelColor = "text-emerald-400 border-emerald-900/50";
+            if (d.level === "Intermediate") levelColor = "text-amber-400 border-amber-900/50";
+            if (d.level === "Advanced") levelColor = "text-purple-400 border-purple-900/50";
+            
             const btn = document.createElement('button');
-            btn.className = 'defense-btn';
+            btn.className = `defense-btn border ${levelColor} bg-black/40`;
             if (_deployedRules.has(d.rule)) btn.classList.add('deployed');
             btn.dataset.rule = d.rule;
-            btn.innerHTML = `<span class="font-bold">${d.label}</span><br><span class="text-[10px] text-slate-500">${d.tip}</span>`;
+            btn.innerHTML = `<span class="font-bold text-blue-300">${d.label}</span> <span class="text-[9px] ${levelColor} px-1 border rounded ml-1">${d.level}</span><br><span class="text-[10px] text-slate-500">${d.tip}</span>`;
             btn.onclick = () => deployDefenseRule(btn, d.rule, d.label);
             arsenal.appendChild(btn);
         });
@@ -633,6 +693,48 @@ async function renderDefenseArsenal() {
 
             deployDefense(rule);
 
+        }
+
+        async function decryptPayload() {
+            const input = document.getElementById('blue-decrypt-input');
+            const cipher = input.value.trim();
+            if(!cipher) return;
+            
+            try {
+                const res = await fetch('/api/game/decrypt', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ lobby_id: currentLobbyId, encrypted_text: cipher })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    input.value = ''; // clear input
+                    document.getElementById('blue-verify-input').value = data.decrypted; // prep verify box
+                    alert(`Decrypted Payload: ${data.decrypted}`);
+                } else {
+                    alert(data.error);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function verifyAttack() {
+            const input = document.getElementById('blue-verify-input');
+            const decrypted = input.value.trim();
+            if(!decrypted) return;
+            
+            try {
+                const res = await fetch('/api/game/verify', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ lobby_id: currentLobbyId, decrypted_payload: decrypted })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert(data.message);
+                } else {
+                    alert(data.error);
+                }
+            } catch(e) { console.error(e); }
         }
 
         
@@ -943,6 +1045,12 @@ Blue Team: Defend against all vectors simultaneously.</div>
 
                 if (data.success) {
 
+                    if (data.status === 'paused') {
+                        document.getElementById('paused-overlay').classList.remove('hidden');
+                    } else {
+                        document.getElementById('paused-overlay').classList.add('hidden');
+                    }
+                    
                     if (data.status === 'active' && document.getElementById('waiting-room').classList.contains('hidden') === false) {
 
                         // Game started by host, but we are still in waiting room
@@ -954,43 +1062,71 @@ Blue Team: Defend against all vectors simultaneously.</div>
                     
 
                     if (myTeam === 'blue' || myTeam === 'host') {
-
                         const traffic = document.getElementById('blue-traffic');
+                        const newTraffic = data.logs.join('\n');
+                        if (traffic.innerHTML !== newTraffic) {
+                            traffic.innerHTML = newTraffic;
+                            traffic.scrollTop = traffic.scrollHeight;
+                        }
+                    }
+                    
+                    // Render Target State (Packed/Unpacked)
+                    const badge = document.getElementById('target-status-badge');
+                    if (badge) {
+                        if (data.target_state === 'unpacked') {
+                            badge.textContent = '[ TARGET UNPACKED - COMPROMISED ]';
+                            badge.className = 'bg-red-900/80 text-red-400 border border-red-500/80 px-6 py-2 rounded-lg font-black tracking-[5px] mono text-lg shadow-[0_0_20px_rgba(239,68,68,0.5)] transition-all duration-300 animate-pulse';
+                        } else {
+                            badge.textContent = '[ TARGET PACKED - SECURE ]';
+                            badge.className = 'bg-blue-900/50 text-blue-400 border border-blue-500/50 px-6 py-2 rounded-lg font-black tracking-[5px] mono text-lg shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-300';
+                        }
+                    }
 
-                        traffic.innerHTML = data.logs.join('\n');
-
-                        traffic.scrollTop = traffic.scrollHeight;
-
+                    // Server Authoritative Timer
+                    if (data.time_remaining !== undefined && data.time_remaining !== null) {
+                        const timerDisplay = document.getElementById('battleground-timer-display');
+                        if (timerDisplay) {
+                            const m = Math.floor(data.time_remaining / 60).toString().padStart(2, '0');
+                            const s = (data.time_remaining % 60).toString().padStart(2, '0');
+                            timerDisplay.textContent = m + ':' + s;
+                            
+                            if (data.time_remaining <= 30) {
+                                timerDisplay.classList.add('text-red-500');
+                                timerDisplay.classList.remove('text-amber-400');
+                            }
+                            
+                            if (data.time_remaining <= 0 && data.status === 'active') {
+                                if (isHost || window.myTeam === 'host') {
+                                    try {
+                                        fetch('/api/game/end_timer', {
+                                            method: 'POST',
+                                            headers: {'Content-Type': 'application/json'},
+                                            body: JSON.stringify({ lobby_id: currentLobbyId })
+                                        });
+                                    } catch(err) {}
+                                }
+                            }
+                        }
                     }
 
                     
 
                     if (data.status === 'red_wins' && !window.breachTriggered) {
-
                         window.breachTriggered = true;
-
                         clearInterval(gamePollInterval);
-
+                        if (typeof battlegroundTimerInterval !== 'undefined') clearInterval(battlegroundTimerInterval);
                         if (myTeam === 'red') {
-
                             showRedVictory(data.winner || 'Red Team');
-
                         } else {
-
                             triggerBreach();
-
                         }
-
                     }
 
                     if (data.status === 'blue_wins' && !window.breachTriggered) {
-
                         window.breachTriggered = true;
-
                         clearInterval(gamePollInterval);
-
+                        if (typeof battlegroundTimerInterval !== 'undefined') clearInterval(battlegroundTimerInterval);
                         showBlueVictory(data.winner || 'Blue Team');
-
                     }
 
                 }
@@ -1156,25 +1292,40 @@ async function createLobby() {
     } catch (err) { console.error(err); showError('Failed to create lobby. Check console.'); }
 }
 
-async function joinLobby() {
-    const inviteCode = document.getElementById('join-invite-code').value.trim();
-    if(!inviteCode) return showError('Please enter an Invite Code');
+async function joinLobby(role) {
+    let payload = {};
+    if (role === 'leader') {
+        const lobbyId = document.getElementById('join-lobby-id').value.trim();
+        const team = document.getElementById('join-team').value;
+        if(!lobbyId) return showError('Please enter a Lobby ID');
+        payload = { role: 'leader', lobby_id: lobbyId, team: team };
+    } else {
+        const inviteCode = document.getElementById('join-invite-code').value.trim();
+        if(!inviteCode) return showError('Please enter a Team ID (Invite Code)');
+        payload = { role: 'player', invite_code: inviteCode };
+    }
 
     try {
         const res = await fetch('/api/lobby/join', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ invite_code: inviteCode })
+            body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.success) {
             currentLobbyId = data.lobby_id;
             myTeam = data.team;
-            isHost = false;
-            document.getElementById('lobby-modal').classList.add('hidden');
-            document.getElementById('waiting-room').classList.add('hidden');
-            document.getElementById('battleground-ui').classList.remove('hidden');
-            startMatch();
+            
+            if (role === 'leader') {
+                isHost = true;
+                showWaitingRoom(currentLobbyId, data.red_code, data.blue_code);
+            } else {
+                isHost = false;
+                document.getElementById('lobby-modal').classList.add('hidden');
+                document.getElementById('waiting-room').classList.add('hidden');
+                document.getElementById('battleground-ui').classList.remove('hidden');
+                startMatch();
+            }
         } else {
             showError(data.error);
         }
@@ -1286,14 +1437,6 @@ function showError(msg) {
         const hackers = ['ZeroDayNinja', 'BytePhantom', 'GhostInTheShell', 'CrashOverride', 'ViperSec', 'NeonBlade', 'CipherPunk', 'RootKitten'];
 
         const actions = ['rooted machine', 'captured flag', 'submitted vulnerability', 'achieved first blood on'];
-
-        const targets = ['[HARD] Internal DC', '[EASY] Web App 01', '[INSANE] CEO Laptop', '[MEDIUM] Backup Server', 'SQLi Challenge'];
-
-
-
-        function addFeedItem() {
-
-            const feed = document.getElementById('feed-container');
 
         const targets = ['[HARD] Internal DC', '[EASY] Web App 01', '[INSANE] CEO Laptop', '[MEDIUM] Backup Server', 'SQLi Challenge'];
 
@@ -1469,7 +1612,10 @@ function showError(msg) {
 
             // Show a final summary
 
-            setTimeout(() => alert('🔴 Match Over — Red Team breached your perimeter. Study the attack logs to harden your defenses for next time!'), 500);
+            setTimeout(() => {
+                alert('🔴 Match Over — Red Team breached your perimeter. Study the attack logs to harden your defenses for next time!');
+                window.location.href = '/dashboard';
+            }, 500);
 
         }
 
@@ -1486,12 +1632,8 @@ function showError(msg) {
         }
 
         function closeVictory() {
-            const red = document.getElementById('red-victory-overlay');
-            const blue = document.getElementById('blue-victory-overlay');
-            if(red) red.classList.remove('show');
-            if(blue) blue.classList.remove('show');
+            window.location.href = '/dashboard';
         }
-}
 
 // --- NEW DEFENSIVE TOOLS & INTEL ---
 
@@ -1582,4 +1724,57 @@ function showThreatIntel() {
     
     content.innerHTML = html;
     modal.classList.remove('hidden');
+}
+
+// --- NEW GAME TIMER LOGIC ---
+let battlegroundTimerInterval = null;
+
+function startBattlegroundTimer(durationSeconds) {
+    if (battlegroundTimerInterval) clearInterval(battlegroundTimerInterval);
+    
+    let timeRemaining = durationSeconds;
+    const timerDisplay = document.getElementById('battleground-timer-display');
+    
+    battlegroundTimerInterval = setInterval(async () => {
+        timeRemaining--;
+        
+        if (timerDisplay) {
+            const m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            const s = (timeRemaining % 60).toString().padStart(2, '0');
+            timerDisplay.textContent = m + ':' + s;
+            
+            if (timeRemaining <= 30) {
+                timerDisplay.classList.add('text-red-500');
+                timerDisplay.classList.remove('text-amber-400');
+            }
+        }
+        
+        if (timeRemaining <= 0) {
+            clearInterval(battlegroundTimerInterval);
+            if (timerDisplay) timerDisplay.textContent = '00:00';
+            
+            if (isHost || window.myTeam === 'host') {
+                try {
+                    await fetch('/api/game/end_timer', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ lobby_id: currentLobbyId })
+                    });
+                } catch (e) { console.error('Failed to end game', e); }
+            }
+        }
+    }, 1000);
+}
+
+
+
+async function surrenderMatch() {
+    if(!confirm('Are you sure you want to surrender? This will immediately give the opposing team the victory.')) return;
+    try {
+        await fetch('/api/game/surrender', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ lobby_id: currentLobbyId, team: myTeam })
+        });
+    } catch(err) { console.error('Failed to surrender', err); }
 }

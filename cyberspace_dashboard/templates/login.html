@@ -47,17 +47,30 @@
             height: 100vh;
         }
 
-        .login-image {
-            flex: 1;
-            background: url('/static/assets/cyber_hero_1785045582652.png') center/cover no-repeat;
+        .login-video-wrapper {
+            flex: 1.2;
             position: relative;
+            overflow: hidden;
+            background-color: #050a0f;
         }
 
-        .login-image::after {
+        .login-video-wrapper video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+        }
+
+        .login-video-wrapper::after {
             content: '';
             position: absolute;
             inset: 0;
-            background: rgba(26, 29, 32, 0.1);
+            background: linear-gradient(to right, rgba(0,0,0,0.1), rgba(249, 248, 246, 1));
         }
 
         .login-container {
@@ -203,7 +216,7 @@
         }
         
         @media (max-width: 768px) {
-            .login-image {
+            .login-video-wrapper {
                 display: none;
             }
         }
@@ -328,7 +341,12 @@
 <body>
 
 <div class="login-layout">
-    <div class="login-image"></div>
+    <div class="login-video-wrapper" style="background: #050a0f; position: relative; overflow: hidden;">
+        <video autoplay loop muted playsinline style="position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; width: auto; height: auto; transform: translate(-50%, -50%); object-fit: cover; z-index: 0;">
+            <source src="{{ url_for('static', filename='assets/hacker_bg.mp4') }}" type="video/mp4">
+        </video>
+        <div style="position: absolute; inset: 0; background: linear-gradient(to right, rgba(0,0,0,0.4), rgba(249, 248, 246, 1)); pointer-events: none;"></div>
+    </div>
     <div class="login-container">
         <div class="login-card">
             <h2>Access Portal</h2>
@@ -527,6 +545,8 @@
 
     document.getElementById('username').addEventListener('keydown', e => { if (e.key === 'Enter') handleAuth(); });
     document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') handleAuth(); });
+
+
 </script>
 </body>
 </html>
