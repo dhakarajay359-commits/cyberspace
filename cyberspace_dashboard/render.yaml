@@ -7,9 +7,5 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
-      - key: DB_PATH
-        value: /data/users.db
-    disk:
-      name: cyberspace-data
-      mountPath: /data
-      sizeGB: 1
+
+    
