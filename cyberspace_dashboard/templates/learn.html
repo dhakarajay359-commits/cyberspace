@@ -1362,7 +1362,16 @@ const VIDEOS = [
             
             // Backend YouTube Bridge Search
             try {
-                const res = await fetch('/api/yt_search?q=' + encodeURIComponent(query));
+                let res;
+                for (let i = 0; i < 3; i++) {
+                    try {
+                        res = await fetch('/api/yt_search?q=' + encodeURIComponent(query));
+                        if (res.ok) break;
+                    } catch (err) {
+                        if (i === 2) throw err;
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+                }
                 const backendResults = await res.json();
                 
                 let allResults = [...localResults];
@@ -1378,6 +1387,7 @@ const VIDEOS = [
                     renderVideos(allResults);
                 }
             } catch(e) {
+                console.error("Search API error:", e);
                 if (localResults.length === 0) {
                     grid.innerHTML = '<div style="color:red; padding:20px;">Error reaching YouTube bridge.</div>';
                 }
@@ -1548,6 +1558,8 @@ const VIDEOS = [
     let currentLocalVideo = null;
 
     let isStudyMode = false;
+    let currentRequestVersion = 0;
+
     function togglePlayerMode(event) {
         if (event) event.stopPropagation();
         isStudyMode = !isStudyMode;
@@ -1572,6 +1584,9 @@ const VIDEOS = [
     }
 
     function openVideoModal(videoId, title, isReload=false) {
+        currentRequestVersion++;
+        const myRequestVersion = currentRequestVersion;
+
         const vData = VIDEOS.find(v => v.id === videoId) || {};
         currentVideoId = videoId;
         
@@ -1580,8 +1595,12 @@ const VIDEOS = [
         const localPlayer = document.getElementById('localVideoPlayer');
         const ytDiv = document.getElementById('ytPlayerDiv');
 
+        // Fully stop local player to prevent overlapping audio
+        localPlayer.pause();
+        localPlayer.removeAttribute('src');
+        localPlayer.load();
         localPlayer.style.display = 'none';
-        localPlayer.src = '';
+        
         ytDiv.style.display = 'none';
         ytDiv.innerHTML = ''; 
         
@@ -1611,10 +1630,23 @@ const VIDEOS = [
                 ytDiv.style.display = 'none';
                 localPlayer.style.display = 'block';
                 _showLoading(true);
-                
-                fetch('/api/yt_stream/' + videoId)
-                    .then(r => r.json())
+                const fetchWithRetry = async (url, retries = 3) => {
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            const response = await fetch(url);
+                            if (response.ok) return await response.json();
+                            throw new Error(`HTTP ${response.status}`);
+                        } catch (e) {
+                            if (i === retries - 1) throw e;
+                            await new Promise(r => setTimeout(r, 1000 * (i + 1))); // exponential backoff
+                        }
+                    }
+                    throw new Error("Max retries reached");
+                };
+
+                fetchWithRetry('/api/yt_stream/' + videoId)
                     .then(data => {
+                        if (myRequestVersion !== currentRequestVersion) return; // Stale request, ignore
                         _showLoading(false);
                         if (data.success && data.url) {
                             localPlayer.src = data.url;
@@ -1625,9 +1657,10 @@ const VIDEOS = [
                         }
                     })
                     .catch(e => {
+                        if (myRequestVersion !== currentRequestVersion) return; // Stale request, ignore
                         _showLoading(false);
                         console.error('Bridge error:', e);
-                        alert("Failed to bridge connection to YouTube.");
+                        alert("Failed to bridge connection to YouTube after retries.");
                     });
             }
         }
@@ -1643,7 +1676,8 @@ const VIDEOS = [
         const localPlayer = document.getElementById('localVideoPlayer');
         if (localPlayer) {
             localPlayer.pause();
-            localPlayer.src = '';
+            localPlayer.removeAttribute('src');
+            localPlayer.load();
         }
         document.getElementById('ytPlayerDiv').innerHTML = '';
         currentVideoId = null;

@@ -61,6 +61,7 @@ DB_PATH = os.environ.get("DB_PATH", "users.db")
 DOMAIN_OR_IP_REGEX = r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
 
 active_games = {}
+lobby_presence = {}
 scan_tasks = {}
 active_terminals = {}
 
@@ -69,6 +70,11 @@ GEMINI_MODEL = "gemini-2.0-flash-lite"
 # ==========================================
 # YT-DLP / VIDEO STREAM CONFIGURATION
 # ==========================================
+class DummyLogger(object):
+    def debug(self, msg): pass
+    def warning(self, msg): pass
+    def error(self, msg): pass
+
 def get_yt_dlp_options():
     """
     Returns standard yt-dlp options configured with ffmpeg merging support,
@@ -76,11 +82,12 @@ def get_yt_dlp_options():
     """
     opts = {
         'quiet': True,
-        # Uses ffmpeg (via apt.txt) to merge best video + best audio, falls back to best single file
+        'no_warnings': True,
+        'logger': DummyLogger(),
         'format': 'bestvideo+bestaudio/best',
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'web']
+                'player_client': ['ios', 'android', 'web']
             }
         }
     }
@@ -269,6 +276,57 @@ def extract_video_stream():
                 "duration": info.get('duration')
             })
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/yt_stream/<video_id>', methods=['GET'])
+@login_required
+def yt_stream(video_id):
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        ydl_opts = get_yt_dlp_options()
+        ydl_opts['format'] = '18/best[ext=mp4]/best'
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            stream_url = info.get('url') or info.get('manifest_url')
+            
+            return jsonify({
+                "success": True,
+                "title": info.get('title'),
+                "url": stream_url,
+                "duration": info.get('duration')
+            })
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        return jsonify({"success": False, "error": str(e), "traceback": tb})
+
+import requests
+
+def internal_youtube_search(query, max_results=10):
+    try:
+        ydl_opts = get_yt_dlp_options()
+        ydl_opts['extract_flat'] = True
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f'ytsearch{max_results}:{query}', download=False)
+            results = []
+            for entry in info.get('entries', []):
+                results.append({'id': entry.get('id'), 'title': entry.get('title')})
+            return results
+    except Exception as e:
+        print("Search Error:", e)
+        return []
+
+@app.route('/api/yt_search')
+@login_required
+def yt_search():
+    query = request.args.get('q', '')
+    if not query:
+        return jsonify([])
+        
+    try:
+        results = internal_youtube_search(query, max_results=10)
+        return jsonify(results)
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -304,11 +362,21 @@ def dashboard():
 def academy():
     return render_template('academy.html')
 
+@app.route('/learn')
+@login_required
+def learn():
+    return render_template('learn.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
 
 @app.route('/practice')
 @login_required
 def practice():
-    return render_template('practice.html')
+    terminal_url = os.environ.get('TERMINAL_BACKEND_URL', 'http://localhost:3001')
+    return render_template('practice.html', terminal_url=terminal_url)
 
 
 @app.route('/compete')
@@ -348,11 +416,14 @@ def create_lobby():
         'difficulty_level': difficulty_level,
         'health': 100,
         'rules': [],
-        'logs': [],
+        'logs': [
+            f"<span class='text-cyan-400 font-bold'>[{time.strftime('%H:%M:%S')}] [INTEL] SOC initialized. Threat intel suggests attacker may use SQL injection (e.g. ' OR 1=1), UNION-based exfiltration, or destructive DROP commands. Deploy Regex WAF rules to block these patterns!</span>"
+        ],
         'real_payloads': [],
         'status': 'waiting',
         'target_state': 'packed',
-        'presence': {}
+        'presence': {},
+        'winner': None
     }
     return jsonify({"success": True, "lobby_id": lobby_id, "red_invite_code": red_invite_code, "blue_invite_code": blue_invite_code})
 
@@ -371,17 +442,24 @@ def game_attack():
     blocked = any(re.search(rule, payload, re.IGNORECASE) for rule in game['rules'] if rule)
     timestamp = time.strftime('%H:%M:%S')
     encoded_payload = base64.b64encode(payload.encode('utf-8')).decode('utf-8')
+    user = session.get('user', 'Hacker').split('@')[0]
     
     game.setdefault('real_payloads', []).append({"timestamp": timestamp, "payload": payload, "blocked": blocked, "encrypted": encoded_payload})
+    game.setdefault('red_terminal_logs', []).append(f"<div class='text-slate-400'>&gt; [{user}] Executing payload: {payload}</div>")
     
     if blocked:
-        game['logs'].append(f"<span class='text-red-500'>[{timestamp}] [BLOCKED] Malicious Traffic Blocked by WAF</span>")
+        game.setdefault('red_terminal_logs', []).append(f"<div class='text-red-500 font-bold'>&gt; [{user}] Attack blocked by WAF!</div>")
+        game['logs'].append(f"<span class='text-emerald-500 font-bold'>[{timestamp}] [BLOCKED] Malicious Traffic Blocked by WAF</span>")
         return jsonify({"success": False, "error": "Your attack was blocked by the WAF!"})
         
     success = any(kw in payload.upper() for kw in ['OR 1=1', 'UNION SELECT', '<SCRIPT>', ';', '&&', '../'])
     if success:
+        game.setdefault('red_terminal_logs', []).append(f"<div class='text-emerald-500 font-bold'>&gt; [{user}] Target exploited successfully!</div>")
         game['target_state'] = 'unpacked'
-        game['logs'].append(f"<span class='text-red-500 font-bold'>[{timestamp}] [BREACH] Target exploited successfully!</span>")
+        game['logs'].append(f"<span class='text-red-500 font-bold'>[{timestamp}] [BREACH] Target exploited successfully! Integrity compromised.</span>")
+    else:
+        game.setdefault('red_terminal_logs', []).append(f"<div class='text-slate-500'>&gt; [{user}] Payload failed to exploit target.</div>")
+        game['logs'].append(f"<span class='text-yellow-400'>[{timestamp}] [TRAFFIC] Suspicious input dropped by application logic: `{payload[:15]}...`</span>")
         
     return jsonify({"success": success, "message": "Payload executed successfully" if success else "Payload failed to exploit target"})
 
@@ -398,13 +476,23 @@ def game_defend():
         return jsonify({"success": False, "error": "Game inactive"})
 
     try:
-        re.compile(rule)
+        compiled_rule = re.compile(rule, re.IGNORECASE)
     except re.error:
+        user = session.get('user', 'Defender').split('@')[0]
+        game['logs'].append(f"<span class='text-red-400 font-bold'>[{time.strftime('%H:%M:%S')}] [WAF ERROR] {user} submitted invalid regex rule!</span>")
         return jsonify({"success": False, "error": "Invalid regex pattern!"})
+        
+    # Check for False Positives (must not block legitimate traffic)
+    benign_strings = ["test_user", "admin123", "aaaaa", "hello world", "123456", "jane_doe"]
+    if any(compiled_rule.search(benign) for benign in benign_strings) or len(rule) < 4:
+        user = session.get('user', 'Defender').split('@')[0]
+        game['logs'].append(f"<span class='text-amber-400 font-bold'>[{time.strftime('%H:%M:%S')}] [WAF REJECTED] Rule `{rule}` by {user} was rejected (Blocks legitimate traffic or is too broad)!</span>")
+        return jsonify({"success": False, "error": "Rule rejected! It blocks legitimate user traffic or is too short."})
 
+    user = session.get('user', 'Defender').split('@')[0]
     game['rules'].append(rule)
     game['target_state'] = 'packed'
-    game['logs'].append(f"<span class='text-cyan-400 font-bold'>[{time.strftime('%H:%M:%S')}] [WAF UPDATED] Rule added: `{rule}`</span>")
+    game['logs'].append(f"<span class='text-cyan-400 font-bold'>[{time.strftime('%H:%M:%S')}] [WAF UPDATED] Rule added by {user}: `{rule}`</span>")
     
     return jsonify({"success": True, "message": "WAF rule deployed"})
 
@@ -439,48 +527,78 @@ def get_scan_status(task_id):
     return jsonify({"success": True, "status": task.get("status"), "logs": task.get("logs", []), "results": task.get("results")})
 
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET'])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
-        user = c.fetchone()
-        conn.close()
-
-        if user and check_password_hash(user[0], password):
-            session['user'] = username
-            return redirect(url_for('dashboard'))
-
-        return render_template('login.html', error="Invalid username or password")
-
     return render_template('login.html')
 
+@app.route('/auth/login', methods=['POST'])
+def auth_login():
+    data = request.json or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+    user = c.fetchone()
+    conn.close()
 
-        if not username or not password:
-            return render_template('register.html', error="Username and password required")
+    if user and check_password_hash(user[0], password):
+        session['user'] = username
+        return jsonify({"success": True, "redirect": url_for('dashboard')})
 
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            c.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, generate_password_hash(password)))
-            conn.commit()
+    return jsonify({"success": False, "error": "Invalid username or password"})
+
+@app.route('/auth/register', methods=['POST'])
+def auth_register():
+    data = request.json or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+
+    if not username or not password:
+        return jsonify({"success": False, "error": "Username and password required"})
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, generate_password_hash(password)))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except sqlite3.IntegrityError:
+        if 'conn' in locals():
             conn.close()
-            session['user'] = username
-            return redirect(url_for('dashboard'))
-        except sqlite3.IntegrityError:
-            return render_template('register.html', error="Username already exists")
+        return jsonify({"success": False, "error": "Username already exists"})
 
-    return render_template('register.html')
+@app.route('/auth/google', methods=['POST'])
+def auth_google():
+    data = request.json or {}
+    email = data.get('email', '').strip()
+    
+    if not email:
+        return jsonify({"success": False, "error": "Email is required"})
+        
+    username = email.split('@')[0] if '@' in email else email
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT username FROM users WHERE username = ?", (username,))
+    user = c.fetchone()
+    
+    if not user:
+        dummy_hash = generate_password_hash(uuid.uuid4().hex)
+        c.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, dummy_hash))
+        conn.commit()
+        
+    conn.close()
+    
+    session['user'] = username
+    return jsonify({"success": True, "redirect": url_for('dashboard')})
+
+@app.route('/auth/logout', methods=['GET'])
+def auth_logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 
 @app.route('/logout')
@@ -488,6 +606,359 @@ def logout():
     session.pop('user', None)
     return redirect(url_for('login'))
 
+
+import time
+import os
+import uuid
+import sqlite3
+from flask import jsonify, request, session
+
+# === NEW MULTIPLAYER ROUTES ===
+
+@app.route('/api/lobby/status/<lobby_id>', methods=['GET'])
+@login_required
+def get_lobby_status(lobby_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT host_username, max_players, status, target_url, red_invite_code, blue_invite_code, scenario, custom_desc FROM lobbies WHERE id = ?", (lobby_id,))
+    lobby = c.fetchone()
+    if not lobby:
+        conn.close()
+        return jsonify({"success": False, "error": "Lobby not found"}), 404
+        
+    c.execute("SELECT username, team FROM lobby_members WHERE lobby_id = ?", (lobby_id,))
+    members = c.fetchall()
+    conn.close()
+    
+    red_team = [m[0] for m in members if m[1] == 'red']
+    blue_team = [m[0] for m in members if m[1] == 'blue']
+    
+    leaders = {
+        "red": red_team[0] if len(red_team) > 0 else None,
+        "blue": blue_team[0] if len(blue_team) > 0 else None
+    }
+    
+    
+    connected_users = []
+    now = time.time()
+    
+    presence = lobby_presence.get(lobby_id, {})
+    for u, t in presence.items():
+        if now - t < 5:
+            connected_users.append(u)
+            
+    red_connected = sum(1 for p in red_team if p in connected_users)
+    blue_connected = sum(1 for p in blue_team if p in connected_users)
+    
+    # Fallback to active_games presence if missing
+    game = active_games.get(lobby_id)
+    if game:
+        game_presence = game.get('presence', {})
+        for p in red_team + blue_team:
+            if now - game_presence.get(p, 0) < 5 and p not in connected_users:
+                connected_users.append(p)
+        red_connected = sum(1 for p in red_team if p in connected_users)
+        blue_connected = sum(1 for p in blue_team if p in connected_users)
+        
+    team_size = max(1, lobby[1] // 2)
+    red_present = red_connected >= team_size
+    blue_present = blue_connected >= team_size
+    
+    return jsonify({
+        "success": True,
+        "id": lobby_id,
+        "host": lobby[0],
+        "max_players": lobby[1],
+        "status": lobby[2],
+        "target_url": lobby[3],
+        "red_invite_code": lobby[4],
+        "blue_invite_code": lobby[5],
+        "scenario": lobby[6],
+        "custom_desc": lobby[7] if len(lobby) > 7 else '',
+        "members": {"red": red_team, "blue": blue_team},
+        "leaders": leaders,
+        "is_leader": session.get('user') in leaders.values(),
+        "connected_users": connected_users,
+        "presence": {"red": red_present, "blue": blue_present}
+    })
+
+@app.route('/api/lobby/demo-join', methods=['POST'])
+@login_required
+def demo_join_lobby():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    team = data.get('team')
+    if not lobby_id or not team:
+        return jsonify({"success": False, "error": "Missing parameters"}), 400
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False, "error": "Lobby not found"}), 404
+    return jsonify({"success": True, "lobby_id": lobby_id, "team": team, "demo": True})
+
+@app.route('/api/lobby/join', methods=['POST'])
+@login_required
+def join_lobby():
+    data = request.json or {}
+    role = data.get('role', 'player')
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    lobby_id = None
+    team = None
+    red_code = None
+    blue_code = None
+    
+    if role == 'leader':
+        lobby_id = data.get('lobby_id')
+        team = data.get('team')
+        if not lobby_id or not team:
+            conn.close()
+            return jsonify({"success": False, "error": "Lobby ID and team are required"}), 400
+            
+        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status FROM lobbies WHERE id = ?", (lobby_id,))
+        lobby = c.fetchone()
+        if not lobby:
+            conn.close()
+            return jsonify({"success": False, "error": "Invalid Lobby ID"}), 404
+            
+        max_players = lobby[1]
+        red_code = lobby[2]
+        blue_code = lobby[3]
+        lobby_status = lobby[4]
+    else:
+        invite_code = data.get('invite_code')
+        if not invite_code:
+            conn.close()
+            return jsonify({"success": False, "error": "Invite code required"}), 400
+            
+        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status FROM lobbies WHERE red_invite_code = ? OR blue_invite_code = ?", (invite_code, invite_code))
+        lobby = c.fetchone()
+        if not lobby:
+            conn.close()
+            return jsonify({"success": False, "error": "Invalid invite code"}), 404
+            
+        lobby_id = lobby[0]
+        max_players = lobby[1]
+        red_code = lobby[2]
+        blue_code = lobby[3]
+        lobby_status = lobby[4]
+        team = 'red' if invite_code == lobby[2] else 'blue'
+        
+    team_size = max_players // 2
+    
+    # For leaders, ensure the team is absolutely empty before joining
+    if role == 'leader':
+        c.execute("SELECT COUNT(*) FROM lobby_members WHERE lobby_id = ? AND team = ?", (lobby_id, team))
+        if c.fetchone()[0] > 0:
+            conn.close()
+            return jsonify({"success": False, "error": f"{team.title()} Team already has a captain! Please change the team option and try again."}), 400
+
+    # Check if user already in lobby
+    c.execute("SELECT team FROM lobby_members WHERE lobby_id = ? AND username = ?", (lobby_id, session['user']))
+    existing_member = c.fetchone()
+    if existing_member:
+        actual_team = existing_member[0]
+        conn.close()
+        if actual_team != team:
+            # For local testing, allow the user to join as the other team (Demo Mode behavior)
+            return jsonify({"success": True, "message": "Joined as opposite team for testing", "lobby_id": lobby_id, "team": team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status, "demo": True})
+        return jsonify({"success": True, "message": "Already in lobby", "lobby_id": lobby_id, "team": actual_team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status})
+        
+    # Check if team is full
+    c.execute("SELECT COUNT(*) FROM lobby_members WHERE lobby_id = ? AND team = ?", (lobby_id, team))
+    current_team_size = c.fetchone()[0]
+
+    if current_team_size >= team_size:
+        conn.close()
+        return jsonify({"success": False, "error": f"This team is full. The leader has set a limit of {team_size} players per team."}), 400
+        
+    c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
+              (lobby_id, session['user'], team))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "lobby_id": lobby_id, "team": team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status})
+
+@app.route('/api/lobby/start', methods=['POST'])
+@login_required
+def start_lobby():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    if not lobby_id:
+        return jsonify({"success": False, "error": "Missing parameters"}), 400
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE lobbies SET status = 'active' WHERE id = ?", (lobby_id,))
+    conn.commit()
+    conn.close()
+    if lobby_id not in active_games:
+        active_games[lobby_id] = {
+            'health': 100, 'rules': [], 'logs': [], 'status': 'active', 
+            'presence': {}, 'winner': None, 'target_state': 'packed', 'real_payloads': []
+        }
+    active_games[lobby_id]['status'] = 'active'
+    active_games[lobby_id]['start_time'] = time.time() + 10
+    return jsonify({"success": True})
+
+@app.route('/api/game/state/<lobby_id>', methods=['GET'])
+@login_required
+def game_state(lobby_id):
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False, "error": "Game not found"}), 404
+        
+    now = time.time()
+    red_present = False
+    blue_present = False
+    time_remaining = None
+    if 'start_time' in game and game['status'] == 'active':
+        elapsed = now - game['start_time']
+        if elapsed > 0:
+            time_remaining = max(0, 300 - int(elapsed))
+        else:
+            time_remaining = 300
+    
+    return jsonify({
+        "success": True,
+        "health": game.get('health', 100),
+        "status": game.get('status', 'waiting'),
+        "logs": game.get('logs', [])[-20:],
+        "red_terminal_logs": game.get('red_terminal_logs', []),
+        "presence": {"red": red_present, "blue": blue_present},
+        "winner": game.get('winner'),
+        "target_state": game.get('target_state', 'packed'),
+        "time_remaining": time_remaining
+    })
+
+@app.route('/api/game/ping', methods=['POST'])
+@login_required
+def game_ping():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    if not lobby_id:
+        return jsonify({"success": False}), 400
+        
+    if lobby_id not in lobby_presence:
+        lobby_presence[lobby_id] = {}
+    lobby_presence[lobby_id][session.get('user')] = time.time()
+    
+    game = active_games.get(lobby_id)
+    if game:
+        if 'presence' not in game:
+            game['presence'] = {}
+        game['presence'][session.get('user')] = time.time()
+    return jsonify({"success": True})
+
+@app.route('/api/game/decrypt', methods=['POST'])
+@login_required
+def game_decrypt():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False}), 404
+    game['target_state'] = 'unpacked'
+    game['logs'].append(f"<span class='text-purple-400'>[{time.strftime('%H:%M:%S')}] Target service unpacked! Vulnerabilities exposed.</span>")
+    return jsonify({"success": True})
+
+@app.route('/api/game/verify', methods=['POST'])
+@login_required
+def game_verify():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False}), 404
+    game['target_state'] = 'packed'
+    game['logs'].append(f"<span class='text-cyan-400'>[{time.strftime('%H:%M:%S')}] System verified and repacked. Secure state restored.</span>")
+    return jsonify({"success": True})
+
+@app.route('/api/game/investigate', methods=['POST'])
+@login_required
+def game_investigate():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False}), 404
+    game['health'] = min(100, game.get('health', 100) + 10)
+    game['logs'].append(f"<span class='text-cyan-400'>[{time.strftime('%H:%M:%S')}] Blue team investigated anomaly. System stability improved. (+10 Health)</span>")
+    return jsonify({"success": True})
+
+@app.route('/api/game/surrender', methods=['POST'])
+@login_required
+def game_surrender():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    team = data.get('team')
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False}), 404
+    game['status'] = 'surrendered'
+    game['winner'] = 'Blue Team' if team == 'red' else 'Red Team'
+    game['logs'].append(f"<span class='text-yellow-400'>[{time.strftime('%H:%M:%S')}] {team.upper()} TEAM SURRENDERED.</span>")
+    return jsonify({"success": True})
+
+@app.route('/api/game/end_timer', methods=['POST'])
+@login_required
+def game_end_timer():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False}), 404
+    if game.get('target_state') == 'unpacked':
+        game['status'] = 'red_wins'
+        game['winner'] = 'Red Team'
+    else:
+        game['status'] = 'blue_wins'
+        game['winner'] = 'Blue Team'
+    return jsonify({"success": True})
+
+@app.route('/api/tools/red/<scenario>', methods=['GET'])
+@login_required
+def get_red_tools(scenario):
+    tools = []
+    if scenario == 'web_breach':
+        tools = [{"id": "nmap", "name": "Nmap Scan", "cost": 10}, {"id": "sqlmap", "name": "SQLMap Injection", "cost": 30}]
+    elif scenario == 'ransomware':
+        tools = [{"id": "phish", "name": "Spear Phish", "cost": 20}, {"id": "encrypt", "name": "Deploy Ransomware", "cost": 50}]
+    else:
+        # Default/sqli_login tools
+        tools = [
+            {"id": "sql_auth_bypass", "name": "Auth Bypass (Classic)", "level": "Basic", "desc": "Bypass login screen by making the username check always true.", "payload": "' OR 1=1 --", "damage": 20},
+            {"id": "sql_union", "name": "UNION Select Users", "level": "Intermediate", "desc": "Extract data from the users table using UNION.", "payload": "' UNION SELECT username, password FROM users --", "damage": 35},
+            {"id": "sql_drop", "name": "DROP Table", "level": "Advanced", "desc": "Highly destructive payload to drop tables.", "payload": "admin'; DROP TABLE users; --", "damage": 50}
+        ]
+    return jsonify({"success": True, "tools": tools})
+
+@app.route('/api/tools/blue/<scenario>', methods=['GET'])
+@login_required
+def get_blue_tools(scenario):
+    tools = []
+    if scenario == 'web_breach':
+        tools = [{"rule": "waf", "label": "Deploy WAF Rule", "cost": 20}, {"rule": "patch", "label": "Patch Vuln", "cost": 30}]
+    elif scenario == 'ransomware':
+        tools = [{"rule": "isolate", "label": "Isolate Host", "cost": 25}, {"rule": "backup", "label": "Restore Backup", "cost": 40}]
+    else:
+        # Default/sqli_login tools (WAF Regex Rules)
+        tools = [
+            {"rule": "OR\\s+1\\s*=\\s*1", "label": "Block Auth Bypass", "level": "Basic", "tip": "Deploy a WAF Regex rule to block basic boolean SQL injections like ' OR 1=1"},
+            {"rule": "UNION\\s+SELECT", "label": "Block Data Exfiltration", "level": "Intermediate", "tip": "Deploy a WAF Regex rule to block UNION SELECT statements"},
+            {"rule": "DROP\\s+TABLE", "label": "Block Destructive Commands", "level": "Advanced", "tip": "Deploy a WAF Regex rule to block destructive DROP queries"}
+        ]
+    return jsonify({"success": True, "tools": tools})
+
+@app.route('/scoreboard', methods=['GET'])
+@login_required
+def scoreboard():
+    return render_template('scoreboard.html', leaders=[])
+
+@app.route('/crypto', methods=['GET'])
+@login_required
+def crypto():
+    return render_template('crypto.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

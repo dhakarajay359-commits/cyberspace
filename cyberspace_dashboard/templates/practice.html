@@ -325,7 +325,6 @@
 <div id="clip-toast">✓ Copied to clipboard</div>
 
 <script>
-const BACKEND = 'http://localhost:3001';
 const START   = Date.now();
 let sessions = [], activeIdx = 0;
 
@@ -365,9 +364,13 @@ function createSession(idx) {
     term.writeln('\x1b[38;5;141m║\x1b[0m  \x1b[38;5;82m🐉 CYBERSPACE — KALI LINUX TERMINAL\x1b[0m                          \x1b[38;5;141m║\x1b[0m');
     term.writeln('\x1b[38;5;141m║\x1b[0m  \x1b[38;5;245mReal PTY shell via node-pty + Socket.IO\x1b[0m                      \x1b[38;5;141m║\x1b[0m');
     term.writeln('\x1b[38;5;141m╚══════════════════════════════════════════════════════════════════╝\x1b[0m');
-    term.writeln('\x1b[38;5;245m  Connecting to ' + BACKEND + '…\x1b[0m\r\n');
+    let backendUrl = '{{ terminal_url }}';
+    if (backendUrl.includes('{' + '{') || backendUrl.includes('5000') || !backendUrl) {
+        backendUrl = 'http://localhost:3001';
+    }
+    term.writeln('\x1b[38;5;245m  Connecting to ' + backendUrl + '...\x1b[0m\r\n');
 
-    const socket = io(BACKEND, { transports:['websocket','polling'], reconnection:true, reconnectionDelay:1500 });
+    const socket = io(backendUrl, { transports:['websocket','polling'], reconnection:true, reconnectionDelay:1500 });
     const sess = { term, fit, socket, sessionId:null, idx, status:'connecting', container:null };
     sessions[idx] = sess;
 
@@ -423,7 +426,7 @@ function createSession(idx) {
         setTabDot(idx,'error'); sess.status = 'disconnected';
     });
 
-    socket.on('connect_error', () => setConn('error','Cannot reach port 3001'));
+    socket.on('connect_error', () => setConn('error','Cannot reach backend'));
 
     // ── Override xterm key handling to support Kali shortcuts ──
     term.attachCustomKeyEventHandler((e) => {

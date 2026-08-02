@@ -153,26 +153,20 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
 
             const demoDiv = document.getElementById('solo-demo-links');
             if (demoDiv) {
-                if (!isHost) {
+                if (myTeam !== 'host') {
                     demoDiv.innerHTML = '';
                 } else {
-                    let buttonsHtml = '';
-                    if (myTeam === 'red') {
-                    buttonsHtml += `
+                    let buttonsHtml = `
                     <button onclick="verifyAndOpenTab('red')"
                        class="bg-red-900/40 border-2 border-red-500/70 text-red-400 font-black px-6 py-3 rounded-xl text-sm hover:bg-red-600 hover:text-white transition flex items-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
                        <span class="mi">swords</span> Open RED TEAM Tab
                        <span class="text-xs font-normal text-red-300 ml-1">(Enter Red Code First)</span>
-                    </button>`;
-                }
-                if (myTeam === 'blue') {
-                    buttonsHtml += `
+                    </button>
                     <button onclick="verifyAndOpenTab('blue')"
                        class="bg-blue-900/40 border-2 border-blue-500/70 text-blue-400 font-black px-6 py-3 rounded-xl text-sm hover:bg-blue-600 hover:text-white transition flex items-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
                        <span class="mi">shield</span> Open BLUE TEAM Tab
                        <span class="text-xs font-normal text-blue-300 ml-1">(Enter Blue Code First)</span>
                     </button>`;
-                }
 
                 demoDiv.innerHTML = `
                     <div class="bg-slate-900/80 border border-slate-700 rounded-xl p-6 mt-6 text-center">
@@ -403,7 +397,7 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
                         document.getElementById('force-start-btn').classList.add('hidden');
                     }
                     
-                    const getStatusBadge = (isPresent) => isPresent 
+                    const getStatusBadge = (username) => (data.connected_users && data.connected_users.includes(username)) 
                         ? `<span class="text-xs font-bold bg-emerald-900/50 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded ml-2 shadow-[0_0_8px_rgba(52,211,153,0.4)]">[CONNECTED]</span>` 
                         : `<span class="text-xs bg-slate-800 text-slate-400 border border-slate-600 px-2 py-0.5 rounded ml-2">[WAITING]</span>`;
 
@@ -414,10 +408,10 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
                     };
 
                     const redList = document.getElementById('red-team-list');
-                    redList.innerHTML = data.members.red.map(u => `<li><span class="text-slate-500">></span> ${u} ${getLeaderBadge(u)} ${getStatusBadge(data.presence?.red)}</li>`).join('');
+                    redList.innerHTML = data.members.red.map(u => `<li><span class="text-slate-500">></span> ${u} ${getLeaderBadge(u)} ${getStatusBadge(u)}</li>`).join('');
                     
                     const blueList = document.getElementById('blue-team-list');
-                    blueList.innerHTML = data.members.blue.map(u => `<li><span class="text-slate-500">></span> ${u} ${getLeaderBadge(u)} ${getStatusBadge(data.presence?.blue)}</li>`).join('');
+                    blueList.innerHTML = data.members.blue.map(u => `<li><span class="text-slate-500">></span> ${u} ${getLeaderBadge(u)} ${getStatusBadge(u)}</li>`).join('');
 
                     const indicator = document.getElementById('deploy-status-indicator');
                     if(indicator) {
@@ -432,7 +426,9 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
 
                     if (data.status === 'active' && !document.getElementById('countdown-overlay')) startMatch();
                 }
-            } catch(e) { console.error('Polling error', e); }
+            } catch(e) { 
+                // Silently ignore polling errors so server restarts don't spam the console
+            }
         }
 
         
@@ -1064,12 +1060,23 @@ Blue Team: Defend against all vectors simultaneously.</div>
                     if (myTeam === 'blue' || myTeam === 'host') {
                         const traffic = document.getElementById('blue-traffic');
                         const newTraffic = data.logs.join('\n');
-                        if (traffic.innerHTML !== newTraffic) {
+                        if (traffic && traffic.innerHTML !== newTraffic) {
                             traffic.innerHTML = newTraffic;
                             traffic.scrollTop = traffic.scrollHeight;
                         }
                     }
                     
+                    if (myTeam === 'red' || myTeam === 'host') {
+                        if (data.red_terminal_logs && data.red_terminal_logs.length > (window._redLogCount || 0)) {
+                            const term = document.getElementById('red-terminal-output');
+                            if (term) {
+                                const newItems = data.red_terminal_logs.slice(window._redLogCount || 0);
+                                term.innerHTML += '\n' + newItems.join('\n');
+                                term.scrollTop = term.scrollHeight;
+                            }
+                            window._redLogCount = data.red_terminal_logs.length;
+                        }
+                    }
                     // Render Target State (Packed/Unpacked)
                     const badge = document.getElementById('target-status-badge');
                     if (badge) {
@@ -1138,92 +1145,44 @@ Blue Team: Defend against all vectors simultaneously.</div>
 
 
         async function sendAttack(customPayload = null) {
-
             let payload = customPayload;
-
             if (!payload) {
-
                 const input = document.getElementById('red-payload');
-
                 payload = input.value.trim();
-
                 if(!payload) return;
-
                 input.value = '';
-
             }
 
-            
-
-            const term = document.getElementById('red-terminal-output');
-
-            term.innerHTML += `\n<div class="text-slate-400">> Executing payload: ${payload}</div>`;
-
-            term.scrollTop = term.scrollHeight;
-
-
-
             try {
-
                 const res = await fetch('/api/game/attack', {
-
                     method: 'POST',
-
                     headers: {'Content-Type': 'application/json'},
-
                     body: JSON.stringify({ lobby_id: currentLobbyId, payload: payload })
-
                 });
-
-                const data = await res.json();
-
-                
-
-                if (data.success) {
-
-                    term.innerHTML += `\n<div class="text-emerald-500 font-bold">> ${data.message}</div>`;
-
-                } else {
-
-                    term.innerHTML += `\n<div class="text-red-500 font-bold">> ${data.error || data.message || 'Attack failed.'}</div>`;
-
+                await res.json();
+                pollGameState();
+            } catch(e) { 
+                const term = document.getElementById('red-terminal-output');
+                if (term) {
+                    term.innerHTML += `\n<div class="text-red-500 font-bold">> Network Error.</div>`;
+                    term.scrollTop = term.scrollHeight;
                 }
-
-                term.scrollTop = term.scrollHeight;
-
-            } catch(e) { console.error(e); }
-
+                console.error(e); 
+            }
         }
 
 
 
         async function deployDefense(rule) {
-
             if (!rule) return false;
-
-            const traffic = document.getElementById('blue-traffic');
-
             try {
-
                 const res = await fetch('/api/game/defend', {
-
                     method: 'POST',
-
                     headers: {'Content-Type': 'application/json'},
-
                     body: JSON.stringify({ lobby_id: currentLobbyId, rule: rule })
-
                 });
-
                 const data = await res.json();
-
-                const msg = data.success !== false ? (data.message || 'Rule deployed.') : (data.error || 'Failed.');
-
-                const cls = data.success !== false ? 'text-blue-400' : 'text-red-400';
-
-                traffic.innerHTML += `\n<div class="${cls} font-bold">[WAF] ${msg}</div>`;
-
-                traffic.scrollTop = traffic.scrollHeight;
+                pollGameState();
 
                 // Raise threat level on first defense deployed
                 const tl = document.getElementById('blue-threat-level');
@@ -1234,6 +1193,7 @@ Blue Team: Defend against all vectors simultaneously.</div>
                 return data.success !== false;
             } catch(e) { 
                 console.error(e); 
+                const traffic = document.getElementById('blue-traffic');
                 if (traffic) {
                     traffic.innerHTML += `\n<div class="text-red-400 font-bold">[WAF] Network Error Deploying Defense.</div>`;
                     traffic.scrollTop = traffic.scrollHeight;
@@ -1315,12 +1275,11 @@ async function joinLobby(role) {
         if (data.success) {
             currentLobbyId = data.lobby_id;
             myTeam = data.team;
+            isHost = (role === 'leader');
             
-            if (role === 'leader') {
-                isHost = true;
+            if (data.status === 'waiting') {
                 showWaitingRoom(currentLobbyId, data.red_code, data.blue_code);
-            } else {
-                isHost = false;
+            } else if (data.status === 'active') {
                 document.getElementById('lobby-modal').classList.add('hidden');
                 document.getElementById('waiting-room').classList.add('hidden');
                 document.getElementById('battleground-ui').classList.remove('hidden');

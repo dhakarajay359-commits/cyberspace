@@ -161,18 +161,7 @@
         .cyber-item:nth-child(6) { left: 85%; animation-duration: 30s; animation-delay: 4s; font-size: 22px; }
         .cyber-item:nth-child(7) { left: 50%; animation-duration: 22s; animation-delay: 6s; font-size: 28px; }
     
-        /* ─── Scanline Sweep ─── */
-        @keyframes scanline {
-            0%   { top: -4px; }
-            100% { top: 100%; }
-        }
-        body::after {
-            content: '';
-            position: fixed; left: 0; right: 0; height: 3px;
-            background: linear-gradient(to right, transparent, rgba(16,185,129,0.55), transparent);
-            z-index: 9999; pointer-events: none;
-            animation: scanline 8s linear infinite;
-        }
+
 
         /* ─── Glitch text on hover ─── */
         .glitch-hover {
@@ -687,6 +676,88 @@
         </div>
     </main>
 
+            <!-- MODALS -->
+        <!-- Pricing Modal -->
+        <div id="pricing-modal" class="modal-backdrop hidden">
+            <div class="bg-slate-900 border-2 border-amber-500 rounded-xl p-8 max-w-2xl w-full mx-4 shadow-[0_0_50px_rgba(245,158,11,0.2)]">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-white">Upgrade to Pro</h2>
+                    <button onclick="closePricingModal()" class="text-slate-400 hover:text-white">&times;</button>
+                </div>
+                <p class="text-slate-400 mb-6">Unlock remediation guides, real-time threat intelligence, and automated fixes.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="border border-slate-700 p-6 rounded cursor-pointer hover:border-amber-500 transition" onclick="selectPlan('pro')">
+                        <h3 class="text-xl font-bold text-amber-500 mb-2">Pro</h3>
+                        <p class="text-2xl font-black text-white mb-4">$12<span class="text-sm text-slate-500">/mo</span></p>
+                        <ul class="text-sm text-slate-400 space-y-2 mb-6">
+                            <li>o" Advanced Vulnerability Fixes</li>
+                            <li>o" 1-Click Code Generation</li>
+                            <li>o" Real-time Dark Web Monitoring</li>
+                        </ul>
+                        <button class="w-full bg-slate-800 text-white py-2 rounded font-bold hover:bg-slate-700">Select Pro</button>
+                    </div>
+                    <div class="border border-slate-700 p-6 rounded cursor-pointer hover:border-indigo-500 transition" onclick="selectPlan('enterprise')">
+                        <h3 class="text-xl font-bold text-indigo-500 mb-2">Enterprise</h3>
+                        <p class="text-2xl font-black text-white mb-4">$49<span class="text-sm text-slate-500">/mo</span></p>
+                        <ul class="text-sm text-slate-400 space-y-2 mb-6">
+                            <li>o" Everything in Pro</li>
+                            <li>o" Dedicated Account Manager</li>
+                            <li>o" Custom API Integrations</li>
+                        </ul>
+                        <button class="w-full bg-slate-800 text-white py-2 rounded font-bold hover:bg-slate-700">Select Enterprise</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Modal -->
+        <div id="payment-modal" class="modal-backdrop hidden">
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-8 max-w-md w-full mx-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black text-white">Complete Payment</h2>
+                    <button onclick="document.getElementById('payment-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">&times;</button>
+                </div>
+                <div class="mb-6">
+                    <p class="text-slate-300">Plan: <span id="payment-plan-name" class="font-bold text-amber-500"></span></p>
+                    <p class="text-slate-300">Total: <span id="payment-plan-price" class="font-bold text-white"></span></p>
+                </div>
+                <input type="hidden" id="payment-plan-key">
+                <div class="space-y-4 mb-6">
+                    <input type="text" id="card-name" placeholder="Name on Card" class="w-full bg-slate-800 border border-slate-700 rounded px-4 py-2 text-white">
+                    <input type="text" id="card-number" placeholder="Card Number" class="w-full bg-slate-800 border border-slate-700 rounded px-4 py-2 text-white">
+                    <div class="flex gap-4">
+                        <input type="text" placeholder="MM/YY" class="w-1/2 bg-slate-800 border border-slate-700 rounded px-4 py-2 text-white">
+                        <input type="text" placeholder="CVC" class="w-1/2 bg-slate-800 border border-slate-700 rounded px-4 py-2 text-white">
+                    </div>
+                </div>
+                <button id="btn-pay" onclick="submitPayment()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded shadow-lg transition">Pay Now</button>
+            </div>
+        </div>
+
+        <!-- Success Modal -->
+        <div id="success-modal" class="modal-backdrop hidden">
+            <div class="bg-slate-900 border-2 border-emerald-500 rounded-xl p-8 max-w-md w-full mx-4 text-center">
+                <div class="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span class="text-2xl text-white font-black">o"</span>
+                </div>
+                <h2 class="text-2xl font-black text-white mb-2">Payment Successful!</h2>
+                <p class="text-slate-400 mb-6">Your account has been upgraded. You now have full access to remediation features.</p>
+                <button onclick="document.getElementById('success-modal').classList.add('hidden')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded transition">Continue to Dashboard</button>
+            </div>
+        </div>
+
+        <!-- Partner Modal -->
+        <div id="partner-modal" class="modal-backdrop hidden">
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-8 max-w-md w-full mx-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="partner-modal-title" class="text-xl font-black text-white">Connect Partner</h2>
+                    <button onclick="document.getElementById('partner-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">&times;</button>
+                </div>
+                <p class="text-slate-400 text-sm mb-4">Enter your API key to connect this integration.</p>
+                <input type="text" id="partner-api-key" placeholder="API Key..." class="w-full bg-slate-800 border border-slate-700 rounded px-4 py-2 text-white mb-6 font-mono text-sm">
+                <button id="partner-modal-submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded transition">Connect Integration</button>
+            </div>
+        </div>
     <script>
 
     // ── TAB/CHIP SYSTEM ──────────────────────────────────────────────────────
@@ -750,7 +821,7 @@
     // ── PASSIVE QUICK AUDITORS ────────────────────────────────────────────
 
     // ── NESSUS ENGINE ────────────────────────────────────────────────────────
-    document.getElementById('btn-nessus-start').addEventListener('click', async () => {
+    document.getElementById('btn-nessus-start')?.addEventListener('click', async () => {
         const target = document.getElementById('nessus-target').value;
         if(!target) return;
         
@@ -783,13 +854,13 @@
         }
         
         // Actually call the API
-        const data = await post('/api/scan/nessus', {target});
+        const data = await post('/api/scan/start', {target: target, type: 'nessus'});
         if(data.error) { statusText.textContent = '[!] ' + data.error; return; }
         
         // Poll for completion
         const poll = setInterval(async () => {
             try {
-                const res = await fetch('/api/scan/' + data.task_id);
+                const res = await fetch('/api/scan/status/' + data.task_id);
                 const taskData = await res.json();
                 
                 if(taskData.error) {
@@ -870,7 +941,7 @@
                         <p class="font-bold text-[10px] text-slate-400 uppercase mb-1">Recommended Fix / Remediation</p>
                         <div class="fix-block">
                             <p class="text-[10px] mono mb-2">${v.remediation}</p>
-                            <button class="mt-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-1 px-3 rounded shadow" onclick="alert('Payment processing simulated. Proceed to payment gateway...')">Pay to Auto-Fix ($50.00)</button>
+                            <button class="mt-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-1 px-3 rounded shadow" onclick="openAutoFixPayment(this)">Pay to Auto-Fix ($50.00)</button>
                         </div>
                     </div>
                 </div>
@@ -885,7 +956,7 @@
         document.getElementById('nessus-status-text').textContent = '[✓] Report generation complete.';
     }
 
-    document.getElementById('audit-btn').addEventListener('click', async () => {
+    document.getElementById('audit-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('audit-target').value;
         if(!target) return;
         const data = await post('/api/audit/headers', {target});
@@ -898,7 +969,7 @@
         document.getElementById('audit-badge').className = 'text-2xl font-black ' + (colorMap[data.grade] || 'text-red-400');
     });
 
-    document.getElementById('csp-btn').addEventListener('click', async () => {
+    document.getElementById('csp-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('csp-target').value;
         if(!target) return;
         const data = await post('/api/audit/csp', {target});
@@ -911,7 +982,7 @@
             (data.csp_present ? '' : `<p class="text-red-400">No CSP header found.</p>`);
     });
 
-    document.getElementById('cookie-btn').addEventListener('click', async () => {
+    document.getElementById('cookie-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('cookie-target').value;
         if(!target) return;
         const data = await post('/api/audit/cookies', {target});
@@ -930,7 +1001,7 @@
     // ── DEEP SCANNER BUTTONS ──────────────────────────────────────────────
 
     // DAST
-    document.getElementById('btn-dast').addEventListener('click', async () => {
+    document.getElementById('btn-dast')?.addEventListener('click', async () => {
         const target = document.getElementById('target-url').value;
         if(!target) return;
         setLoading('Nmap scanning — streaming output...');
@@ -947,7 +1018,7 @@
     });
 
     // SAST
-    document.getElementById('btn-sast').addEventListener('click', async () => {
+    document.getElementById('btn-sast')?.addEventListener('click', async () => {
         const target = document.getElementById('target-path').value;
         if(!target) return;
         setLoading('Running Bandit & pip-audit...');
@@ -964,7 +1035,7 @@
     });
 
     // INFRA
-    document.getElementById('btn-infra').addEventListener('click', async () => {
+    document.getElementById('btn-infra')?.addEventListener('click', async () => {
         const content = document.getElementById('infra-content').value;
         if(!content) return;
         setLoading('Linting Dockerfile...');
@@ -977,7 +1048,7 @@
     });
 
     // SECRETS
-    document.getElementById('btn-secrets').addEventListener('click', async () => {
+    document.getElementById('btn-secrets')?.addEventListener('click', async () => {
         const content = document.getElementById('secrets-content').value;
         if(!content) return;
         setLoading('Scanning for secrets...');
@@ -990,7 +1061,7 @@
     });
 
     // DNS
-    document.getElementById('btn-dns').addEventListener('click', async () => {
+    document.getElementById('btn-dns')?.addEventListener('click', async () => {
         const domain = document.getElementById('dns-domain').value;
         if(!domain) return;
         setLoading('Querying DNS...');
@@ -1004,7 +1075,7 @@
     });
 
     // WAF
-    document.getElementById('btn-waf').addEventListener('click', async () => {
+    document.getElementById('btn-waf')?.addEventListener('click', async () => {
         const target = document.getElementById('waf-target').value;
         if(!target) return;
         setLoading('Probing WAF & rate limiter...');
@@ -1020,7 +1091,7 @@
     });
 
     // SRI
-    document.getElementById('btn-sri').addEventListener('click', async () => {
+    document.getElementById('btn-sri')?.addEventListener('click', async () => {
         const target = document.getElementById('sri-target').value;
         if(!target) return;
         setLoading('Fetching HTML and computing SRI hashes...');
@@ -1035,7 +1106,7 @@
     });
 
     // CORS
-    document.getElementById('btn-cors').addEventListener('click', async () => {
+    document.getElementById('btn-cors')?.addEventListener('click', async () => {
         const target = document.getElementById('cors-target').value;
         if(!target) return;
         setLoading('Testing CORS policy...');
@@ -1049,7 +1120,7 @@
     });
 
     // Subdomain
-    document.getElementById('btn-subdomain').addEventListener('click', async () => {
+    document.getElementById('btn-subdomain')?.addEventListener('click', async () => {
         const domain = document.getElementById('sub-domain').value;
         if(!domain) return;
         setLoading('Scanning subdomains...');
@@ -1062,7 +1133,7 @@
     });
 
     // SSL
-    document.getElementById('btn-ssl').addEventListener('click', async () => {
+    document.getElementById('btn-ssl')?.addEventListener('click', async () => {
         const domain = document.getElementById('ssl-domain').value;
         if(!domain) return;
         setLoading('Connecting and fetching TLS info...');
@@ -1077,7 +1148,7 @@
     });
 
     // AI Prompt Guard
-    document.getElementById('btn-ai').addEventListener('click', async () => {
+    document.getElementById('btn-ai')?.addEventListener('click', async () => {
         const text = document.getElementById('ai-content').value;
         if(!text) return;
         setLoading('Analyzing for injection patterns...');
@@ -1090,7 +1161,7 @@
     });
 
     // DOM-XSS
-    document.getElementById('btn-domxss').addEventListener('click', async () => {
+    document.getElementById('btn-domxss')?.addEventListener('click', async () => {
         const content = document.getElementById('domxss-content').value;
         if(!content) return;
         setLoading('Scanning for dangerous JS sinks...');
@@ -1102,7 +1173,7 @@
     });
 
     // ASVS
-    document.getElementById('btn-asvs').addEventListener('click', async () => {
+    document.getElementById('btn-asvs')?.addEventListener('click', async () => {
         const arch = document.getElementById('asvs-arch').value;
         const data = await post('/api/audit/asvs', {arch});
         rc().innerHTML = `<h4 class="text-emerald-400 font-bold mb-3">ASVS Checklist — ${data.arch_type}</h4>` +
@@ -1119,7 +1190,7 @@
     });
 
     // Git Hook
-    document.getElementById('btn-hook').addEventListener('click', async () => {
+    document.getElementById('btn-hook')?.addEventListener('click', async () => {
         const data = await fetch('/api/audit/pre-commit-hook').then(r => r.json());
         rc().innerHTML = `<h4 class="text-emerald-400 font-bold mb-2">Pre-Commit Hook Generated</h4>`;
         data.instructions?.forEach(i => rc().insertAdjacentHTML('beforeend', `<p class="text-sm text-slate-300 mb-1">→ ${i}</p>`));
@@ -1127,7 +1198,7 @@
     });
 
     // security.txt
-    document.getElementById('btn-sectxt').addEventListener('click', async () => {
+    document.getElementById('btn-sectxt')?.addEventListener('click', async () => {
         const domain = document.getElementById('sectxt-domain').value;
         if(!domain) return;
         const data = await post('/api/audit/security-txt', {domain});
@@ -1142,7 +1213,7 @@
     });
 
     // Enterprise: Smuggling
-    document.getElementById('btn-smuggling').addEventListener('click', async () => {
+    document.getElementById('btn-smuggling')?.addEventListener('click', async () => {
         const target = document.getElementById('smuggling-target').value;
         if(!target) return;
         setLoading('Running HTTP Desync Probes (CL.TE / TE.CL)...');
@@ -1157,7 +1228,7 @@
     });
 
     // Enterprise: TypoSquatting
-    document.getElementById('btn-typosquat').addEventListener('click', async () => {
+    document.getElementById('btn-typosquat')?.addEventListener('click', async () => {
         const type = document.getElementById('typosquat-type').value;
         const content = document.getElementById('typosquat-content').value;
         if(!content) return;
@@ -1170,7 +1241,7 @@
     });
 
     // Enterprise: Open Redirect
-    document.getElementById('btn-redirect').addEventListener('click', async () => {
+    document.getElementById('btn-redirect')?.addEventListener('click', async () => {
         const target = document.getElementById('redirect-target').value;
         if(!target) return;
         setLoading('Fuzzing redirect parameters...');
@@ -1183,7 +1254,7 @@
     });
 
     // Enterprise: LocalStorage
-    document.getElementById('btn-localstorage').addEventListener('click', async () => {
+    document.getElementById('btn-localstorage')?.addEventListener('click', async () => {
         const content = document.getElementById('localstorage-content').value;
         if(!content) return;
         setLoading('Auditing JS for LocalStorage token leaks...');
@@ -1196,7 +1267,7 @@
     });
 
     // Enterprise: IaC Hardener
-    document.getElementById('btn-iac').addEventListener('click', async () => {
+    document.getElementById('btn-iac')?.addEventListener('click', async () => {
         const content = document.getElementById('iac-content').value;
         if(!content) return;
         setLoading('Analyzing IAM/Terraform for wildcard permissions...');
@@ -1209,7 +1280,7 @@
     });
 
     // Advanced: Prototype Pollution
-    document.getElementById('proto-btn').addEventListener('click', async () => {
+    document.getElementById('proto-btn')?.addEventListener('click', async () => {
         const content = document.getElementById('proto-target').value;
         if(!content) return;
         setLoading('Analyzing code for Prototype Pollution patterns...');
@@ -1222,7 +1293,7 @@
     });
 
     // Advanced: GraphQL Introspection
-    document.getElementById('graphql-btn').addEventListener('click', async () => {
+    document.getElementById('graphql-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('graphql-target').value;
         if(!target) return;
         setLoading('Testing GraphQL endpoint for introspection...');
@@ -1235,7 +1306,7 @@
     });
 
     // Advanced: SSTI
-    document.getElementById('ssti-btn').addEventListener('click', async () => {
+    document.getElementById('ssti-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('ssti-target').value;
         if(!target) return;
         setLoading('Injecting Server-Side Template payloads...');
@@ -1248,7 +1319,7 @@
     });
 
     // Advanced: Data Exposure
-    document.getElementById('exposure-btn').addEventListener('click', async () => {
+    document.getElementById('exposure-btn')?.addEventListener('click', async () => {
         const content = document.getElementById('exposure-target').value;
         if(!content) return;
         setLoading('Scanning JSON payload for sensitive data (PII)...');
@@ -1261,7 +1332,7 @@
     });
 
     // Advanced: CSP Reporting
-    document.getElementById('csp-report-btn').addEventListener('click', async () => {
+    document.getElementById('csp-report-btn')?.addEventListener('click', async () => {
         const data = await fetch('/api/audit/csp-report-setup').then(r => r.json());
         rc().innerHTML = card('blue', 'CSP REPORTING SYSTEM', 'Ingestion Endpoint Ready', data.report_url);
         rc().insertAdjacentHTML('beforeend', codeBlock('CSP Reporting Setup Guide', escHtml(data.setup_guide)));
@@ -1289,7 +1360,7 @@
         return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
-    document.getElementById('xxe-btn').addEventListener('click', async () => {
+    document.getElementById('xxe-btn')?.addEventListener('click', async () => {
         const content = document.getElementById('xxe-target').value;
         if(!content) return;
         setLoading('Auditing XML Parser...');
@@ -1301,7 +1372,7 @@
         rc().insertAdjacentHTML('beforeend', codeBlock('Secure XML Configuration', escHtml(data.fix)));
     });
 
-    document.getElementById('host-btn').addEventListener('click', async () => {
+    document.getElementById('host-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('host-target').value;
         if(!target) return;
         setLoading('Injecting malicious Host headers...');
@@ -1313,7 +1384,7 @@
         rc().insertAdjacentHTML('beforeend', codeBlock('Nginx Host Validation', escHtml(data.fix)));
     });
 
-    document.getElementById('deserial-btn').addEventListener('click', async () => {
+    document.getElementById('deserial-btn')?.addEventListener('click', async () => {
         const content = document.getElementById('deserial-target').value;
         if(!content) return;
         setLoading('Scanning for insecure object deserialization...');
@@ -1325,7 +1396,7 @@
         rc().insertAdjacentHTML('beforeend', codeBlock('Safe Data Handling', escHtml(data.fix)));
     });
 
-    document.getElementById('clickjack-btn').addEventListener('click', async () => {
+    document.getElementById('clickjack-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('clickjack-target').value;
         if(!target) return;
         setLoading('Checking X-Frame-Options & CSP...');
@@ -1349,7 +1420,7 @@
         rc().insertAdjacentHTML('beforeend', codeBlock('Anti-Clickjacking Headers', escHtml(data.fix)));
     });
 
-    document.getElementById('ssrf-cloud-btn').addEventListener('click', async () => {
+    document.getElementById('ssrf-cloud-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('ssrf-cloud-target').value;
         if(!target) return;
         setLoading('Probing Cloud Metadata (169.254.169.254)...');
@@ -1479,8 +1550,33 @@
         setTimeout(() => {
             document.getElementById('payment-modal').classList.add('hidden');
             document.getElementById('success-modal').classList.remove('hidden');
-            applyPlan(plan);
+            
+            if (plan === 'autofix') {
+                if(currentAutoFixButton) {
+                    currentAutoFixButton.textContent = 'o" Fixed';
+                    currentAutoFixButton.classList.replace('bg-green-600', 'bg-slate-700');
+                    currentAutoFixButton.classList.replace('hover:bg-green-500', 'hover:bg-slate-600');
+                    currentAutoFixButton.disabled = true;
+                }
+            } else {
+                applyPlan(plan);
+            }
+            
+            btn.textContent = 'Pay Now';
+            btn.disabled = false;
+            document.getElementById('card-name').value = '';
+            document.getElementById('card-number').value = '';
         }, 2000);
+    }
+
+    let currentAutoFixButton = null;
+    function openAutoFixPayment(btn) {
+        currentAutoFixButton = btn;
+        const modal = document.getElementById('payment-modal');
+        document.getElementById('payment-plan-name').textContent = 'Auto-Fix (One Time)';
+        document.getElementById('payment-plan-price').textContent = '$50.00';
+        document.getElementById('payment-plan-key').value = 'autofix';
+        modal.classList.remove('hidden');
     }
 
     applyPlan(currentPlan);
@@ -1500,7 +1596,7 @@
     }
     function _escH(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    document.getElementById('cswsh-btn').addEventListener('click', async () => {
+    document.getElementById('cswsh-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('cswsh-target').value; if(!target) return;
         const data = await _post('/api/audit/cswsh', {target});
         _rc().innerHTML = '';
@@ -1509,7 +1605,7 @@
         _rc().insertAdjacentHTML('beforeend', _code('Secure WS Origin Whitelist', _escH(data.fix)));
     });
 
-    document.getElementById('redos-btn').addEventListener('click', async () => {
+    document.getElementById('redos-btn')?.addEventListener('click', async () => {
         const content = document.getElementById('redos-target').value; if(!content) return;
         const data = await _post('/api/audit/redos', {content});
         _rc().innerHTML = '';
@@ -1518,7 +1614,7 @@
         _rc().insertAdjacentHTML('beforeend', _code('Safe Regex Strategy', _escH(data.fix)));
     });
 
-    document.getElementById('debug-btn').addEventListener('click', async () => {
+    document.getElementById('debug-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('debug-target').value; if(!target) return;
         const data = await _post('/api/audit/debug-endpoints', {target});
         _rc().innerHTML = '';
@@ -1527,7 +1623,7 @@
         _rc().insertAdjacentHTML('beforeend', _code('Disable Dev Routes', _escH(data.fix)));
     });
 
-    document.getElementById('css-inject-btn').addEventListener('click', async () => {
+    document.getElementById('css-inject-btn')?.addEventListener('click', async () => {
         const content = document.getElementById('css-inject-target').value; if(!content) return;
         const data = await _post('/api/audit/css-injection', {content});
         _rc().innerHTML = '';
@@ -1536,7 +1632,7 @@
         _rc().insertAdjacentHTML('beforeend', _code('Safe CSS Policy', _escH(data.fix)));
     });
 
-    document.getElementById('dns-rebind-btn').addEventListener('click', async () => {
+    document.getElementById('dns-rebind-btn')?.addEventListener('click', async () => {
         const target = document.getElementById('dns-rebind-target').value; if(!target) return;
         const data = await _post('/api/audit/dns-rebinding', {target});
         _rc().innerHTML = '';
@@ -1555,7 +1651,7 @@
         document.getElementById('partner-modal').classList.remove('hidden');
     }
 
-    document.getElementById('partner-modal-submit').addEventListener('click', () => {
+    document.getElementById('partner-modal-submit')?.addEventListener('click', () => {
         const key = document.getElementById('partner-api-key').value.trim();
         if(!key) return;
 
@@ -1579,6 +1675,38 @@
         document.getElementById('partner-modal').classList.add('hidden');
     });
     
+    // ── MATRIX RAIN IMPLEMENTATION ─────────────────────────────────────────────
+    const matrixCanvas = document.getElementById('matrixCanvas');
+    if (matrixCanvas) {
+        const mctx = matrixCanvas.getContext('2d');
+        matrixCanvas.width = window.innerWidth;
+        matrixCanvas.height = window.innerHeight;
+        
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
+        const fontSize = 14;
+        const columns = matrixCanvas.width/fontSize;
+        const drops = [];
+        for(let x = 0; x < columns; x++) drops[x] = 1;
+        
+        function drawMatrix() {
+            mctx.fillStyle = 'rgba(11, 15, 25, 0.05)';
+            mctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+            mctx.fillStyle = 'rgba(16, 185, 129, 0.35)'; // Emerald color
+            mctx.font = fontSize + 'px monospace';
+            for(let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                mctx.fillText(text, i*fontSize, drops[i]*fontSize);
+                if(drops[i]*fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 33);
+        
+        window.addEventListener('resize', () => {
+            matrixCanvas.width = window.innerWidth;
+            matrixCanvas.height = window.innerHeight;
+        });
+    }
 </script>
 
 {% endblock %}
