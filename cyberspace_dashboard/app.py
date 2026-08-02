@@ -14,9 +14,12 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template, Response, redirect, url_for, session
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from google import genai
 from google.genai import types
 import yt_dlp
+from docker_manager import spawn_target, teardown_target
+from scoring_engine import init_scoring_engine, submit_flag
 
 load_dotenv()
 
@@ -56,13 +59,17 @@ from exotic_auditors import (
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key_12345')
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 DB_PATH = os.environ.get("DB_PATH", "users.db")
 DOMAIN_OR_IP_REGEX = r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
 
+# In-memory storage
 active_games = {}
-lobby_presence = {}
 scan_tasks = {}
+
+# Initialize scoring engine
+init_scoring_engine(active_games, socketio)
 active_terminals = {}
 
 GEMINI_MODEL = "gemini-2.0-flash-lite"
@@ -807,14 +814,20 @@ def start_lobby():
     c.execute("UPDATE lobbies SET status = 'active' WHERE id = ?", (lobby_id,))
     conn.commit()
     conn.close()
-    if lobby_id not in active_games:
-        active_games[lobby_id] = {
-            'health': 100, 'rules': [], 'logs': [], 'status': 'active', 
-            'presence': {}, 'winner': None, 'target_state': 'packed', 'real_payloads': []
-        }
+    active_games[lobby_id] = {
+        'health': 100, 'rules': [], 'logs': [], 'status': 'active', 
+        'presence': {}, 'winner': None, 'target_state': 'packed', 'real_payloads': []
+    }
+    
+    # Spawn vulnerable target (Docker Phase 2)
+    target_info = spawn_target(lobby_id)
+    active_games[lobby_id]['target_ip'] = target_info.get('ip', 'N/A')
+    
     active_games[lobby_id]['status'] = 'active'
     active_games[lobby_id]['start_time'] = time.time() + 10
-    return jsonify({"success": True})
+    
+    socketio.emit('live_event_update', {'message': 'Game started!'}, room=lobby_id)
+    return jsonify({"success": True, "target_info": target_info})
 
 @app.route('/api/game/state/<lobby_id>', methods=['GET'])
 @login_required
@@ -913,6 +926,8 @@ def game_surrender():
     game['status'] = 'surrendered'
     game['winner'] = 'Blue Team' if team == 'red' else 'Red Team'
     game['logs'].append(f"<span class='text-yellow-400'>[{time.strftime('%H:%M:%S')}] {team.upper()} TEAM SURRENDERED.</span>")
+    teardown_target(lobby_id)
+    socketio.emit('live_event_update', {'message': f'{team.upper()} team surrendered!'}, room=lobby_id)
     return jsonify({"success": True})
 
 @app.route('/api/game/end_timer', methods=['POST'])
@@ -929,7 +944,22 @@ def game_end_timer():
     else:
         game['status'] = 'blue_wins'
         game['winner'] = 'Blue Team'
+    teardown_target(lobby_id)
+    socketio.emit('live_event_update', {'message': 'Timer ended!'}, room=lobby_id)
     return jsonify({"success": True})
+
+@app.route('/api/game/flag', methods=['POST'])
+@login_required
+def game_flag():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    team = data.get('team')
+    flag = data.get('flag')
+    
+    if not lobby_id or not team or not flag:
+        return jsonify({"success": False, "error": "Missing parameters"}), 400
+        
+    return jsonify(submit_flag(lobby_id, team, flag))
 
 @app.route('/api/tools/red/<scenario>', methods=['GET'])
 @login_required
@@ -1430,6 +1460,39 @@ CRITICAL OPERATING RULES:
         return jsonify({"output": f"Antigravity Physics Engine Failure: {str(e)}\n\n[ERROR] Gravity containment breach detected."})
 
 
+# ---------------------------------------------------------
+# WEBSOCKET / REAL-TIME ENGINE (CYBER RANGE PHASE 1)
+# ---------------------------------------------------------
+
+@socketio.on('join_game_room')
+def on_join(data):
+    lobby_id = data.get('lobby_id')
+    username = data.get('username')
+    if lobby_id and username:
+        join_room(lobby_id)
+        emit('player_joined', {'username': username, 'message': f'{username} has entered the range.'}, to=lobby_id)
+
+@socketio.on('leave_game_room')
+def on_leave(data):
+    lobby_id = data.get('lobby_id')
+    username = data.get('username')
+    if lobby_id and username:
+        leave_room(lobby_id)
+        emit('player_left', {'username': username, 'message': f'{username} has disconnected.'}, to=lobby_id)
+
+@socketio.on('chat_message')
+def on_chat(data):
+    lobby_id = data.get('lobby_id')
+    if lobby_id:
+        emit('new_message', data, to=lobby_id)
+
+@socketio.on('game_event')
+def on_game_event(data):
+    lobby_id = data.get('lobby_id')
+    if lobby_id:
+        emit('live_event_update', data, to=lobby_id)
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)

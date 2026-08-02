@@ -1,3 +1,27 @@
+let socket = io();
+
+socket.on('player_joined', (data) => {
+    console.log(data.message);
+    if(currentLobbyId) pollLobbyStatus();
+});
+
+socket.on('player_left', (data) => {
+    console.log(data.message);
+    if(currentLobbyId) pollLobbyStatus();
+});
+
+socket.on('live_event_update', (data) => {
+    if(data.type === 'score_update') {
+        if(data.scores) {
+            const redScoreEl = document.getElementById('score-red');
+            const blueScoreEl = document.getElementById('score-blue');
+            if (redScoreEl) redScoreEl.textContent = data.scores.red;
+            if (blueScoreEl) blueScoreEl.textContent = data.scores.blue;
+        }
+    }
+    if(currentLobbyId) pollGameState();
+});
+
 let currentLobbyId = null;
 
         let myTeam = null;
@@ -109,6 +133,7 @@ let currentLobbyId = null;
 
 
 function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
+            socket.emit('join_game_room', {lobby_id: currentLobbyId, username: myTeam});
             document.getElementById('lobby-modal').classList.add('hidden');
 
             document.getElementById('waiting-room').classList.remove('hidden');
@@ -1335,6 +1360,7 @@ async function joinLobby(role) {
             if (data.status === 'waiting') {
                 showWaitingRoom(currentLobbyId, data.red_code, data.blue_code);
             } else if (data.status === 'active') {
+                socket.emit('join_game_room', {lobby_id: currentLobbyId, username: myTeam});
                 document.getElementById('lobby-modal').classList.add('hidden');
                 document.getElementById('waiting-room').classList.add('hidden');
                 document.getElementById('battleground-ui').classList.remove('hidden');
@@ -1358,6 +1384,26 @@ function showError(msg) {
 
         }
 
+async function submitFlag() {
+    if(!currentLobbyId || myTeam !== 'red') return;
+    const flagInput = document.getElementById('flag-input').value.trim();
+    if(!flagInput) return;
+    
+    try {
+        const res = await fetch('/api/game/flag', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({lobby_id: currentLobbyId, team: myTeam, flag: flagInput})
+        });
+        const data = await res.json();
+        if(data.success) {
+            document.getElementById('flag-input').value = '';
+            console.log('Flag accepted!');
+        } else {
+            console.error(data.error);
+        }
+    } catch (err) { console.error('Failed to submit flag', err); }
+}
 
 
         // Matrix Rain Background

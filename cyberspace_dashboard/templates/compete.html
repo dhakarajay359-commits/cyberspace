@@ -974,6 +974,12 @@
         <header class="flex justify-between items-center bg-slate-900 border border-slate-700 p-3 rounded mb-4">
              <div class="text-emerald-400 mono font-bold">MATCH IN PROGRESS // LOBBY: <span id="bg-lobby-id"></span></div>
              
+             <!-- Score Display -->
+             <div class="flex gap-4 mx-4">
+                 <div class="bg-red-900/30 border border-red-500/50 px-4 py-1 rounded text-red-400 font-bold mono">RED: <span id="score-red">0</span></div>
+                 <div class="bg-blue-900/30 border border-blue-500/50 px-4 py-1 rounded text-blue-400 font-bold mono">BLUE: <span id="score-blue">0</span></div>
+             </div>
+
              <!-- Target Status Indicator -->
              <div id="target-status-indicator" class="flex-1 text-center mx-4">
                 <span id="target-status-badge" class="bg-blue-900/50 text-blue-400 border border-blue-500/50 px-6 py-2 rounded-lg font-black tracking-[5px] mono text-lg shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-300">
@@ -1026,10 +1032,18 @@
                 </div>
 
                 <!-- Input Bar (always visible) -->
-                <div class="p-4 border-t border-red-900/50 flex items-center gap-3 bg-black/60">
-                    <span class="text-red-500 font-mono text-sm font-bold">root@kali:~#</span>
-                    <input type="text" id="red-payload" class="flex-1 bg-transparent border-none text-red-400 font-mono text-sm outline-none placeholder-red-900/50" placeholder="Type exploit payload or command...">
-                    <button onclick="sendAttack()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded text-xs font-bold tracking-wider transition shadow-lg shadow-red-900/50">EXECUTE</button>
+                <div class="p-4 border-t border-red-900/50 flex flex-col gap-3 bg-black/60">
+                    <div class="flex items-center gap-3">
+                        <span class="text-red-500 font-mono text-sm font-bold">root@kali:~#</span>
+                        <input type="text" id="red-payload" class="flex-1 bg-transparent border-none text-red-400 font-mono text-sm outline-none placeholder-red-900/50" placeholder="Type exploit payload or command...">
+                        <button onclick="sendAttack()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded text-xs font-bold tracking-wider transition shadow-lg shadow-red-900/50">EXECUTE</button>
+                    </div>
+
+                    <!-- Flag Submission -->
+                    <div id="red-flag-panel" class="p-2 border-t border-slate-700 bg-red-900/20 flex gap-2">
+                        <input type="text" id="flag-input" placeholder="Enter Flag (e.g., FLAG{...})" class="bg-black border border-red-500 text-white px-2 py-1 flex-1 font-mono text-sm">
+                        <button onclick="submitFlag()" class="bg-red-600 text-white font-bold py-1 px-4 rounded mono text-sm">SUBMIT</button>
+                    </div>
                 </div>
             </div>
 
@@ -1163,6 +1177,7 @@
 
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 <script src="{{ url_for('static', filename='js/compete.js') }}"></script>
 
 {% endblock %}
