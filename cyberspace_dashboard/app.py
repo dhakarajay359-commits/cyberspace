@@ -401,6 +401,7 @@ def create_lobby():
     host_team = data.get('host_team', 'blue')
     custom_desc = data.get('custom_desc', '')
     custom_flag = data.get('custom_flag', '')
+    target_url = data.get('target_url', '')
     difficulty_level = int(data.get('difficulty_level', 1))
     
     lobby_id = str(uuid.uuid4())[:8]
@@ -409,8 +410,8 @@ def create_lobby():
     
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("INSERT INTO lobbies (id, host_username, max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag, difficulty_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-              (lobby_id, session['user'], max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag, difficulty_level))
+    c.execute("INSERT INTO lobbies (id, host_username, max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag, target_url, difficulty_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+              (lobby_id, session['user'], max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag, target_url, difficulty_level))
     c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
               (lobby_id, session['user'], host_team))
     conn.commit()
@@ -811,6 +812,11 @@ def start_lobby():
         return jsonify({"success": False, "error": "Missing parameters"}), 400
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    c.execute("SELECT scenario, target_url FROM lobbies WHERE id = ?", (lobby_id,))
+    row = c.fetchone()
+    scenario = row[0] if row else ''
+    target_url = row[1] if row else ''
+    
     c.execute("UPDATE lobbies SET status = 'active' WHERE id = ?", (lobby_id,))
     conn.commit()
     conn.close()
@@ -819,9 +825,14 @@ def start_lobby():
         'presence': {}, 'winner': None, 'target_state': 'packed', 'real_payloads': []
     }
     
-    # Spawn vulnerable target (Docker Phase 2)
-    target_info = spawn_target(lobby_id)
-    active_games[lobby_id]['target_ip'] = target_info.get('ip', 'N/A')
+    target_info = {}
+    if scenario == 'real_target' and target_url:
+        active_games[lobby_id]['target_ip'] = target_url
+        target_info = {"success": True, "ip": target_url, "simulated": False, "is_real_external": True}
+    else:
+        # Spawn vulnerable target (Docker Phase 2)
+        target_info = spawn_target(lobby_id)
+        active_games[lobby_id]['target_ip'] = target_info.get('ip', 'N/A')
     
     active_games[lobby_id]['status'] = 'active'
     active_games[lobby_id]['start_time'] = time.time() + 10
@@ -856,6 +867,7 @@ def game_state(lobby_id):
         "presence": {"red": red_present, "blue": blue_present},
         "winner": game.get('winner'),
         "target_state": game.get('target_state', 'packed'),
+        "target_ip": game.get('target_ip', ''),
         "time_remaining": time_remaining
     })
 
@@ -1004,7 +1016,12 @@ def settings():
 @app.route('/scoreboard', methods=['GET'])
 @login_required
 def scoreboard():
-    return render_template('scoreboard.html', leaders=[])
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT username, wins, matches_played, total_score FROM users ORDER BY total_score DESC, wins DESC LIMIT 50")
+    leaders = c.fetchall()
+    conn.close()
+    return render_template('scoreboard.html', leaders=leaders)
 
 @app.route('/crypto', methods=['GET'])
 @login_required

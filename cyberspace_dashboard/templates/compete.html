@@ -648,7 +648,7 @@
 
                             <label class="block text-slate-400 text-sm mb-1">Target Scenario</label>
 
-                            <select id="create-scenario" onchange="document.getElementById('custom-ctf-fields').classList.toggle('hidden', this.value !== 'custom_ctf')" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm">
+                            <select id="create-scenario" onchange="document.getElementById('custom-ctf-fields').classList.toggle('hidden', this.value !== 'custom_ctf'); document.getElementById('real-target-fields').classList.toggle('hidden', this.value !== 'real_target');" class="w-full bg-black border border-slate-700 text-white rounded p-2 text-sm">
 
                                 <option value="sqli_login">SQL Injection (Login Bypass)</option>
 
@@ -664,8 +664,16 @@
 
                                 <option value="custom_ctf">Custom Target (Simulated)</option>
 
+                                <option value="real_target">Real External Target (IP/URL)</option>
+
                             </select>
 
+                        </div>
+
+                        <!-- Real Target IP Field -->
+                        <div id="real-target-fields" class="hidden mb-4 text-left">
+                            <label class="block text-slate-400 text-sm mb-1">Target IP / URL</label>
+                            <input type="text" id="create-target-ip" class="w-full bg-black border border-emerald-500/50 text-white rounded p-2 text-sm" placeholder="e.g. 192.168.1.100 or http://target.local">
                         </div>
 
                         <div id="custom-ctf-fields" class="hidden mb-4 text-left">
@@ -985,6 +993,7 @@
                 <span id="target-status-badge" class="bg-blue-900/50 text-blue-400 border border-blue-500/50 px-6 py-2 rounded-lg font-black tracking-[5px] mono text-lg shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-300">
                     [ TARGET PACKED ]
                 </span>
+                <div id="target-ip-display" class="text-cyan-400 mt-2 font-bold mono text-sm hidden"></div>
              </div>
 
              <div class="text-amber-400 mono text-xl animate-pulse whitespace-nowrap" id="battleground-timer-display">04:59</div>

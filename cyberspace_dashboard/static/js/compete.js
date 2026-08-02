@@ -1119,6 +1119,7 @@ Blue Team: Defend against all vectors simultaneously.</div>
                     }
                     // Render Target State (Packed/Unpacked)
                     const badge = document.getElementById('target-status-badge');
+                    const ipDisplay = document.getElementById('target-ip-display');
                     if (badge) {
                         if (data.target_state === 'unpacked') {
                             badge.textContent = '[ TARGET UNPACKED - COMPROMISED ]';
@@ -1127,6 +1128,10 @@ Blue Team: Defend against all vectors simultaneously.</div>
                             badge.textContent = '[ TARGET PACKED - SECURE ]';
                             badge.className = 'bg-blue-900/50 text-blue-400 border border-blue-500/50 px-6 py-2 rounded-lg font-black tracking-[5px] mono text-lg shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-300';
                         }
+                    }
+                    if (ipDisplay && data.target_ip) {
+                        ipDisplay.textContent = `TARGET IP: ${data.target_ip}`;
+                        ipDisplay.classList.remove('hidden');
                     }
 
                     // Server Authoritative Timer
@@ -1290,10 +1295,16 @@ async function createLobby() {
     const team = document.getElementById('create-team').value;
     const customDesc = document.getElementById('create-custom-desc').value;
     const customFlag = document.getElementById('create-custom-flag').value;
+    const targetUrl = document.getElementById('create-target-ip') ? document.getElementById('create-target-ip').value : '';
     const maxPlayers = parseInt(document.getElementById('create-max-players').value) || 2;
 
     if (scenario === 'custom_ctf' && (!customDesc || !customFlag)) {
         showError('Please provide both Target Details and Exploit Payload.');
+        return;
+    }
+    
+    if (scenario === 'real_target' && !targetUrl) {
+        showError('Please provide a Target IP or URL for the real target.');
         return;
     }
 
@@ -1306,7 +1317,8 @@ async function createLobby() {
                 host_team: team,
                 max_players: maxPlayers,
                 custom_desc: customDesc,
-                custom_flag: customFlag
+                custom_flag: customFlag,
+                target_url: targetUrl
             })
         });
 
