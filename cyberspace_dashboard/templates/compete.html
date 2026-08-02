@@ -1132,7 +1132,7 @@
 <div id="blue-victory-overlay" class="victory-overlay">
     <div class="victory-box blue-victory-box">
         <h2 class="text-4xl font-black text-blue-500 mb-4 animate-pulse">THREAT NEUTRALIZED</h2>
-        <h3 class="text-xl text-blue-400 mb-6">Blue Team successfully defended the target!</h3>
+        <h3 class="text-xl text-blue-400 mb-6" id="blue-victory-subtitle">Blue Team successfully defended the target!</h3>
         
         <div class="flex justify-center mb-6">
             <svg class="w-32 h-32 text-blue-500 animate-float-ghost" viewBox="0 0 24 24" fill="currentColor">
@@ -1142,6 +1142,22 @@
         </div>
         <p class="text-slate-400 font-mono text-sm mb-8">All attack vectors blocked. System integrity maintained.</p>
         <button onclick="closeVictory()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-lg font-bold tracking-widest transition">ACKNOWLEDGE</button>
+    </div>
+</div>
+
+<!-- Defeat Overlay -->
+<div id="defeat-overlay" class="victory-overlay">
+    <div class="victory-box red-victory-box">
+        <h2 class="text-4xl font-black text-red-500 mb-4 animate-pulse">DEFEAT</h2>
+        <h3 class="text-xl text-red-400 mb-6" id="defeat-subtitle">Mission Failed</h3>
+        
+        <div class="flex justify-center mb-6">
+            <svg class="w-32 h-32 text-red-500 animate-glitch-skull" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12,2C7.58,2 4,5.58 4,10C4,12.72 5.37,15.12 7.5,16.5V22H9.5V20H11V22H13V20H14.5V22H16.5V16.5C18.63,15.12 20,12.72 20,10C20,5.58 16.42,2 12,2M8,11C6.9,11 6,10.1 6,9C6,7.9 6.9,7 8,7C9.1,7 10,7.9 10,9C10,10.1 9.1,11 8,11M16,11C14.9,11 14,10.1 14,9C14,7.9 14.9,7 16,7C17.1,7 18,7.9 18,9C18,10.1 17.1,11 16,11M12,14.5C10.62,14.5 9.5,13.38 9.5,12C9.5,10.62 10.62,9.5 12,9.5C13.38,9.5 14.5,10.62 14.5,12C14.5,13.38 13.38,14.5 12,14.5Z" />
+            </svg>
+        </div>
+        <p class="text-slate-400 font-mono text-sm mb-8" id="defeat-message">Connection terminated.</p>
+        <button onclick="closeVictory()" class="bg-red-600 hover:bg-red-500 text-white px-8 py-3 rounded-lg font-bold tracking-widest transition">DISCONNECT</button>
     </div>
 </div>
 

@@ -1137,10 +1137,11 @@ Blue Team: Defend against all vectors simultaneously.</div>
                         window.breachTriggered = true;
                         clearInterval(gamePollInterval);
                         if (typeof battlegroundTimerInterval !== 'undefined') clearInterval(battlegroundTimerInterval);
-                        if (myTeam === 'red') {
+                        if (myTeam === 'red' || myTeam === 'host') {
                             showRedVictory(data.winner || 'Red Team');
                         } else {
                             triggerBreach();
+                            showDefeat('Red Team successfully attacked!', 'Target Compromised.');
                         }
                     }
 
@@ -1148,7 +1149,30 @@ Blue Team: Defend against all vectors simultaneously.</div>
                         window.breachTriggered = true;
                         clearInterval(gamePollInterval);
                         if (typeof battlegroundTimerInterval !== 'undefined') clearInterval(battlegroundTimerInterval);
-                        showBlueVictory(data.winner || 'Blue Team');
+                        if (myTeam === 'blue' || myTeam === 'host') {
+                            showBlueVictory(data.winner || 'Blue Team');
+                        } else {
+                            showDefeat('Blue Team successfully defended!', 'Attack failed. IP Blocked.');
+                        }
+                    }
+
+                    if (data.status === 'surrendered' && !window.breachTriggered) {
+                        window.breachTriggered = true;
+                        clearInterval(gamePollInterval);
+                        if (typeof battlegroundTimerInterval !== 'undefined') clearInterval(battlegroundTimerInterval);
+                        if (data.winner === 'Blue Team') {
+                            if (myTeam === 'blue' || myTeam === 'host') {
+                                showBlueVictory('Opponent Surrendered');
+                            } else {
+                                showDefeat('Your team surrendered!', 'Mission Aborted.');
+                            }
+                        } else {
+                            if (myTeam === 'red' || myTeam === 'host') {
+                                showRedVictory('Opponent Surrendered');
+                            } else {
+                                showDefeat('Your team surrendered!', 'Mission Aborted.');
+                            }
+                        }
                     }
 
                 }
@@ -1611,14 +1635,42 @@ function showError(msg) {
 
 
 
-        function showRedVictory(winner) {
+        function showRedVictory(subtitle) {
             const overlay = document.getElementById('red-victory-overlay');
-            if(overlay) overlay.classList.add('show');
+            if(overlay) {
+                // If it's a surrender, update the text to be appropriate
+                if (subtitle === 'Opponent Surrendered') {
+                    const box = overlay.querySelector('h3');
+                    if(box) box.textContent = "Blue Team has surrendered the system!";
+                }
+                overlay.classList.add('show');
+            }
         }
 
-        function showBlueVictory(winner) {
+        function showBlueVictory(subtitle) {
             const overlay = document.getElementById('blue-victory-overlay');
-            if(overlay) overlay.classList.add('show');
+            if(overlay) {
+                if (subtitle === 'Opponent Surrendered') {
+                    const box = overlay.querySelector('#blue-victory-subtitle');
+                    if(box) box.textContent = "Red Team aborted the attack!";
+                }
+                overlay.classList.add('show');
+            }
+        }
+        
+        function showDefeat(subtitle, message) {
+            const overlay = document.getElementById('defeat-overlay');
+            if(overlay) {
+                if(subtitle) {
+                    const subEl = document.getElementById('defeat-subtitle');
+                    if(subEl) subEl.textContent = subtitle;
+                }
+                if(message) {
+                    const msgEl = document.getElementById('defeat-message');
+                    if(msgEl) msgEl.textContent = message;
+                }
+                overlay.classList.add('show');
+            }
         }
 
         function closeVictory() {
