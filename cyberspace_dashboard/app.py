@@ -967,6 +967,14 @@ def get_blue_tools(scenario):
 
 @app.route('/scoreboard', methods=['GET'])
 @login_required
+
+@app.route('/settings', methods=['GET'])
+@login_required
+def settings():
+    return render_template('settings.html')
+
+@app.route('/scoreboard', methods=['GET'])
+@login_required
 def scoreboard():
     return render_template('scoreboard.html', leaders=[])
 
