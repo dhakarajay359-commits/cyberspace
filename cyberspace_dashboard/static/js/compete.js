@@ -1169,12 +1169,21 @@ Blue Team: Defend against all vectors simultaneously.</div>
             }
 
             try {
+                const encodedPayload = btoa(unescape(encodeURIComponent(payload)));
                 const res = await fetch('/api/game/attack', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ lobby_id: currentLobbyId, payload: payload })
+                    body: JSON.stringify({ lobby_id: currentLobbyId, payload: encodedPayload, is_encoded: true })
                 });
-                await res.json();
+                
+                // Handle non-JSON responses from server (like 502 or 403 from external WAF)
+                if (!res.ok) {
+                    const text = await res.text();
+                    try { JSON.parse(text); } catch(e) { throw new Error("Server returned non-JSON error: " + res.status); }
+                } else {
+                    await res.json();
+                }
+                
                 pollGameState();
             } catch(e) { 
                 const term = document.getElementById('red-terminal-output');
@@ -1191,12 +1200,19 @@ Blue Team: Defend against all vectors simultaneously.</div>
         async function deployDefense(rule) {
             if (!rule) return false;
             try {
+                const encodedRule = btoa(unescape(encodeURIComponent(rule)));
                 const res = await fetch('/api/game/defend', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ lobby_id: currentLobbyId, rule: rule })
+                    body: JSON.stringify({ lobby_id: currentLobbyId, rule: encodedRule, is_encoded: true })
                 });
-                const data = await res.json();
+                
+                if (!res.ok) {
+                    const text = await res.text();
+                    try { JSON.parse(text); } catch(e) { throw new Error("Server returned non-JSON error: " + res.status); }
+                } else {
+                    const data = await res.json();
+                }
                 pollGameState();
 
                 // Raise threat level on first defense deployed

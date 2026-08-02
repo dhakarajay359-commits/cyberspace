@@ -434,7 +434,14 @@ def game_attack():
     data = request.json or {}
     lobby_id = data.get('lobby_id')
     payload = data.get('payload', '').strip()
+    is_encoded = data.get('is_encoded', False)
     
+    if is_encoded:
+        try:
+            payload = base64.b64decode(payload).decode('utf-8')
+        except Exception:
+            pass
+            
     game = active_games.get(lobby_id)
     if not game or game['status'] != 'active':
         return jsonify({"success": False, "error": "Game not found or inactive"})
@@ -470,6 +477,14 @@ def game_defend():
     data = request.json or {}
     lobby_id = data.get('lobby_id')
     rule = data.get('rule', '').strip()
+    is_encoded = data.get('is_encoded', False)
+    
+    if is_encoded:
+        try:
+            import base64
+            rule = base64.b64decode(rule).decode('utf-8')
+        except Exception:
+            pass
 
     game = active_games.get(lobby_id)
     if not game or game['status'] != 'active':
