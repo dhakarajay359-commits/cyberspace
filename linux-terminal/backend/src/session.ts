@@ -56,7 +56,7 @@ export class SessionManager {
     this.io = io;
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (GoogleGenerativeAI && apiKey && !apiKey.startsWith('AQ.') && apiKey !== 'YOUR_GEMINI_API_KEY_HERE') {
+    if (GoogleGenerativeAI && apiKey && apiKey !== 'YOUR_GEMINI_API_KEY_HERE') {
       try {
         this.genAI = new GoogleGenerativeAI(apiKey);
         console.log('[SessionManager] Gemini API initialized — AI-enhanced mode');
