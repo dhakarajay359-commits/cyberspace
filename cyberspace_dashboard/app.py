@@ -965,8 +965,6 @@ def get_blue_tools(scenario):
         ]
     return jsonify({"success": True, "tools": tools})
 
-@app.route('/scoreboard', methods=['GET'])
-@login_required
 
 @app.route('/settings', methods=['GET'])
 @login_required
