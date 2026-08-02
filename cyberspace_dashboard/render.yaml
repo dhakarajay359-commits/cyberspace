@@ -2,7 +2,7 @@ services:
   - type: web
     name: cyberspace-dashboard
     env: python
-    rootDir: .
+    rootDir: cyberspace_dashboard
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
