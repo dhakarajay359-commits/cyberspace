@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Backup and diff files
+*.bak
+*.rej
+*.orig
+*.patch
+*.diff
+
+# Logs and databases
+*.log
+# If you want to keep users.db tracked, it will stay tracked since you already committed it!
+# This will prevent other random .db files from cluttering your repo.
+*.db
+*.sqlite3
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Random test/scratch files
+out*.bin
+*.json
+!package.json
+!package-lock.json
+*.ps1
+test_*.py
+test_*.js
+
+# Packages
+node_modules/
