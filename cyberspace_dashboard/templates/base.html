@@ -134,7 +134,7 @@
             max-width: 100%;
             overflow-x: hidden;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-            animation: fadeInUp 0.8s ease-out forwards;
+            animation: fadeIn 0.8s ease-out forwards;
         }
 
         /* Typography overrides */
@@ -173,14 +173,12 @@
         }
 
         /* Global Animations */
-        @keyframes fadeInUp {
+        @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(20px);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
             }
         }
         
