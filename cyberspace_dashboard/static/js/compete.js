@@ -392,7 +392,22 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
                     
                     // Show force start button to leaders
                     if (data.is_leader) {
-                        document.getElementById('force-start-btn').classList.remove('hidden');
+                        let hasOpponent = (myTeam === 'red' && data.members.blue && data.members.blue.length > 0) || 
+                                          (myTeam === 'blue' && data.members.red && data.members.red.length > 0) ||
+                                          (isHost && data.members.red && data.members.red.length > 0 && data.members.blue && data.members.blue.length > 0);
+                        
+                        let btn = document.getElementById('force-start-btn');
+                        btn.classList.remove('hidden');
+                        
+                        if (hasOpponent) {
+                            btn.disabled = false;
+                            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                            btn.textContent = 'FORCE DEPLOY';
+                        } else {
+                            btn.disabled = true;
+                            btn.classList.add('opacity-50', 'cursor-not-allowed');
+                            btn.textContent = 'WAITING FOR OPPONENT...';
+                        }
                     } else {
                         document.getElementById('force-start-btn').classList.add('hidden');
                     }
