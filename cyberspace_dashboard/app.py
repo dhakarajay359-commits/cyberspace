@@ -478,12 +478,11 @@ def create_lobby():
     lobby_id = str(uuid.uuid4())[:8]
     red_invite_code = 'R-' + str(uuid.uuid4())[:6]
     blue_invite_code = 'B-' + str(uuid.uuid4())[:6]
-    white_invite_code = 'W-' + str(uuid.uuid4())[:6]
     
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("INSERT INTO lobbies (id, host_username, max_players, scenario, red_invite_code, blue_invite_code, white_invite_code, custom_desc, custom_flag, target_url, difficulty_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-              (lobby_id, session['user'], max_players, scenario, red_invite_code, blue_invite_code, white_invite_code, custom_desc, custom_flag, target_url, difficulty_level))
+    c.execute("INSERT INTO lobbies (id, host_username, max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag, target_url, difficulty_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+              (lobby_id, session['user'], max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag, target_url, difficulty_level))
     c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
               (lobby_id, session['user'], host_team))
     conn.commit()
@@ -506,7 +505,7 @@ def create_lobby():
         'winner': None,
         'network_latency': False
     }
-    return jsonify({"success": True, "lobby_id": lobby_id, "red_invite_code": red_invite_code, "blue_invite_code": blue_invite_code, "white_invite_code": white_invite_code})
+    return jsonify({"success": True, "lobby_id": lobby_id, "red_invite_code": red_invite_code, "blue_invite_code": blue_invite_code})
 
 
 @app.route('/api/game/attack', methods=['POST'])
@@ -731,7 +730,7 @@ from flask import jsonify, request, session
 def get_lobby_status(lobby_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT host_username, max_players, status, target_url, red_invite_code, blue_invite_code, scenario, custom_desc, white_invite_code FROM lobbies WHERE id = ?", (lobby_id,))
+    c.execute("SELECT host_username, max_players, status, target_url, red_invite_code, blue_invite_code, scenario, custom_desc FROM lobbies WHERE id = ?", (lobby_id,))
     lobby = c.fetchone()
     if not lobby:
         conn.close()
@@ -743,12 +742,10 @@ def get_lobby_status(lobby_id):
     
     red_team = [m[0] for m in members if m[1] == 'red']
     blue_team = [m[0] for m in members if m[1] == 'blue']
-    white_team = [m[0] for m in members if m[1] == 'white']
     
     leaders = {
         "red": red_team[0] if len(red_team) > 0 else None,
-        "blue": blue_team[0] if len(blue_team) > 0 else None,
-        "white": white_team[0] if len(white_team) > 0 else None
+        "blue": blue_team[0] if len(blue_team) > 0 else None
     }
     
     
@@ -788,8 +785,7 @@ def get_lobby_status(lobby_id):
         "blue_invite_code": lobby[5],
         "scenario": lobby[6],
         "custom_desc": lobby[7] if len(lobby) > 7 else '',
-        "white_invite_code": lobby[8] if len(lobby) > 8 else '',
-        "members": {"red": red_team, "blue": blue_team, "white": white_team},
+        "members": {"red": red_team, "blue": blue_team},
         "leaders": leaders,
         "is_leader": session.get('user') in leaders.values(),
         "connected_users": connected_users,
@@ -822,7 +818,6 @@ def join_lobby():
     team = None
     red_code = None
     blue_code = None
-    white_code = None
     
     if role == 'leader':
         lobby_id = data.get('lobby_id')
@@ -831,7 +826,7 @@ def join_lobby():
             conn.close()
             return jsonify({"success": False, "error": "Lobby ID and team are required"}), 400
             
-        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status, white_invite_code FROM lobbies WHERE id = ?", (lobby_id,))
+        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status FROM lobbies WHERE id = ?", (lobby_id,))
         lobby = c.fetchone()
         if not lobby:
             conn.close()
@@ -841,14 +836,13 @@ def join_lobby():
         red_code = lobby[2]
         blue_code = lobby[3]
         lobby_status = lobby[4]
-        white_code = lobby[5] if len(lobby) > 5 else None
     else:
         invite_code = data.get('invite_code')
         if not invite_code:
             conn.close()
             return jsonify({"success": False, "error": "Invite code required"}), 400
             
-        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status, white_invite_code FROM lobbies WHERE red_invite_code = ? OR blue_invite_code = ? OR white_invite_code = ?", (invite_code, invite_code, invite_code))
+        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status FROM lobbies WHERE red_invite_code = ? OR blue_invite_code = ?", (invite_code, invite_code))
         lobby = c.fetchone()
         if not lobby:
             conn.close()
@@ -859,13 +853,13 @@ def join_lobby():
         red_code = lobby[2]
         blue_code = lobby[3]
         lobby_status = lobby[4]
-        white_code = lobby[5] if len(lobby) > 5 else None
         if invite_code == red_code:
             team = 'red'
         elif invite_code == blue_code:
             team = 'blue'
         else:
-            team = 'white'
+            conn.close()
+            return jsonify({"success": False, "error": "Invalid invite code"}), 404
         
     team_size = max_players // 2
     
@@ -885,23 +879,22 @@ def join_lobby():
         if actual_team != team:
             # For local testing, allow the user to join as the other team (Demo Mode behavior)
             return jsonify({"success": True, "message": "Joined as opposite team for testing", "lobby_id": lobby_id, "team": team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status, "demo": True})
-        return jsonify({"success": True, "message": "Already in lobby", "lobby_id": lobby_id, "team": actual_team, "red_code": red_code, "blue_code": blue_code, "white_code": white_code, "status": lobby_status})
+        return jsonify({"success": True, "message": "Already in lobby", "lobby_id": lobby_id, "team": actual_team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status})
         
-    # Check if team is full (except White team which can have multiple observers)
-    if team != 'white':
-        c.execute("SELECT COUNT(*) FROM lobby_members WHERE lobby_id = ? AND team = ?", (lobby_id, team))
-        current_team_size = c.fetchone()[0]
-    
-        if current_team_size >= team_size:
-            conn.close()
-            return jsonify({"success": False, "error": f"This team is full. The leader has set a limit of {team_size} players per team."}), 400
+    # Check if team is full
+    c.execute("SELECT COUNT(*) FROM lobby_members WHERE lobby_id = ? AND team = ?", (lobby_id, team))
+    current_team_size = c.fetchone()[0]
+
+    if current_team_size >= team_size:
+        conn.close()
+        return jsonify({"success": False, "error": f"This team is full. The leader has set a limit of {team_size} players per team."}), 400
         
     c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
               (lobby_id, session['user'], team))
     conn.commit()
     conn.close()
     
-    return jsonify({"success": True, "lobby_id": lobby_id, "team": team, "red_code": red_code, "blue_code": blue_code, "white_code": white_code, "status": lobby_status})
+    return jsonify({"success": True, "lobby_id": lobby_id, "team": team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status})
 
 @app.route('/api/lobby/start', methods=['POST'])
 @login_required

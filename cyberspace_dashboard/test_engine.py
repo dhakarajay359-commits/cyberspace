@@ -21,3 +21,4 @@ for v in report.get('vulnerabilities', [])[:3]:
     print(f"     Evidence: {v.get('evidence', '')[:80]}")
     print(f"     Fix: {v.get('remediation', '')[:80]}")
     print()
+

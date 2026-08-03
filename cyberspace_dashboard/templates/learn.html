@@ -1016,20 +1016,15 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('roadmap')" id="tab-roadmap">📹 Videos</div>
+            <div class="tab active" onclick="switchTab('roadmap')" id="tab-roadmap">📚 Books</div>
             <div class="tab" onclick="switchTab('paths')" id="tab-paths">🗺️ Paths</div>
             <div class="tab" onclick="switchTab('walkthroughs')" id="tab-walkthroughs">🔓 Walkthroughs</div>
         </div>
 
-        <!-- Videos Tab Content -->
+        <!-- Books Tab Content -->
         <div class="tab-content active" id="content-roadmap">
-            <h2 class="video-section-title">🎬 Cybersecurity Video Library & Roadmaps</h2>
-            <p style="color:var(--text-muted); margin-bottom:24px;">Watch curated tutorials or follow specialized career roadmaps.</p>
-
-            <div class="video-mode-toggle" style="display:flex; gap:10px; margin-bottom:30px;">
-                <button class="vmode-btn active" id="btn-mode-library" onclick="setVideoMode('library')">📚 Video Library</button>
-                <button class="vmode-btn" id="btn-mode-roadmaps" onclick="setVideoMode('roadmaps')">📁 Cyber Roadmaps</button>
-            </div>
+            <h2 class="video-section-title">📚 Cybersecurity Book Library</h2>
+            <p style="color:var(--text-muted); margin-bottom:24px;">Read curated books and guides to deepen your knowledge.</p>
 
             <!-- Library View -->
             <div id="video-library-view">
@@ -1038,124 +1033,18 @@
                         <svg class="search-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
-                        <input type="text" id="videoSearch" class="search-input" placeholder="Search videos (e.g., 'Wireshark', 'Splunk')..." onkeyup="handleSearch()">
+                        <input type="text" id="bookSearch" class="search-input" placeholder="Search books (e.g., 'Network', 'Python')..." onkeyup="handleBookSearch()">
                     </div>
                     <div class="video-filter-bar">
-                        <button class="vfilter active" onclick="filterVideos('all', this)">ALL</button>
-                        <button class="vfilter" onclick="filterVideos('beginner', this)">Beginner (Fundamentals)</button>
-                        <button class="vfilter" onclick="filterVideos('intermediate', this)">Intermediate</button>
-                        <button class="vfilter" onclick="filterVideos('advanced', this)">Advanced</button>
+                        <button class="vfilter active" onclick="filterBooks('all', this)">ALL</button>
+                        <button class="vfilter" onclick="filterBooks('beginner', this)">Beginner</button>
+                        <button class="vfilter" onclick="filterBooks('intermediate', this)">Intermediate</button>
+                        <button class="vfilter" onclick="filterBooks('advanced', this)">Advanced</button>
                     </div>
                 </div>
-                <div class="video-grid" id="videoGrid"><!-- JS renders cards here --></div>
-            </div>
-
-            <!-- Roadmaps View -->
-            <div id="video-roadmaps-view" style="display:none;">
-                <div id="roadmap-folders-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
-                    <!-- JS renders folders here -->
-                </div>
-                <div id="roadmap-playlist-view" style="display:none; animation:fadeIn 0.4s ease-out;">
-                    <button onclick="backToFolders()" style="background:transparent; border:none; color:var(--accent-green); cursor:pointer; margin-bottom:20px; font-weight:bold; display:flex; align-items:center; gap:8px;">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                        Back to Roadmaps
-                    </button>
-                    <h3 id="playlist-title" style="color:#fff; margin-bottom:10px; font-family:var(--font-display); font-size:1.8rem;"></h3>
-                    <p id="playlist-desc" style="color:var(--text-muted); margin-bottom:30px;"></p>
-                    <div id="playlist-diagram-container" style="display:none; margin-bottom:40px;"></div>
-                    <div class="video-grid" id="playlist-grid"></div>
-                </div>
+                <div class="video-grid" id="bookGrid"><!-- JS renders cards here --></div>
             </div>
         </div>
-
-        
-
-        
-
-        
-
-        
-        <!-- ── In-Site Video Player Modal (YouTube IFrame API) ── -->
-        <div id="videoModal" onclick="handleModalClick(event)" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.93);backdrop-filter:blur(18px);align-items:center;justify-content:center;">
-            <div id="videoModalCard" onclick="event.stopPropagation()" style="
-                position:relative;
-                width:92%;
-                max-width:960px;
-                background:#0d0d1a;
-                border-radius:18px;
-                border:1px solid rgba(139,92,246,0.3);
-                overflow:hidden;
-                box-shadow:0 0 80px rgba(139,92,246,0.25), 0 30px 80px rgba(0,0,0,0.8);
-                animation:modalPop 0.3s cubic-bezier(0.34,1.56,0.64,1);
-            ">
-                <!-- Header bar -->
-                <div id="videoModalHeader" style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.08);">
-                    <div style="display:flex;align-items:center;gap:10px;overflow:hidden;padding-right:10px;">
-                        <svg width="20" height="20" fill="#ff0000" viewBox="0 0 24 24" style="flex-shrink:0;"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
-                        <span id="modalVideoTitle" style="color:#fff;font-weight:600;font-size:0.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                        <button id="btnPlayerToggle" onclick="togglePlayerMode(event)" title="Switch to YouTube native player for high quality" style="background:rgba(255,255,255,0.1);border:1px solid rgba(139,92,246,0.5);color:#fff;font-size:12px;cursor:pointer;height:34px;border-radius:17px;padding:0 12px;display:flex;align-items:center;justify-content:center;transition:background 0.2s;white-space:nowrap;" onmouseover="this.style.background='rgba(139,92,246,0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                            HQ Mode (Study)
-                        </button>
-                        <button id="btnMiniPlayer" onclick="toggleMiniPlayer(event)" title="Picture-in-Picture" style="background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:14px;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseover="this.style.background='rgba(139,92,246,0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V5c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 0H3V5h18v14z"/></svg>
-                        </button>
-                        <button onclick="popOutVideo(event)" title="Pop Out to New Window" style="background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:16px;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseover="this.style.background='rgba(139,92,246,0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-                        </button>
-                        <button onclick="closeVideoModal()" title="Close" style="background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:18px;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,0,0,0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">✕</button>
-                    </div>
-                </div>
-
-                <!-- Video Player Container (Handles both Local and External) -->
-                <div id="videoPlayerWrap" style="position:relative;aspect-ratio:16/9;background:#000;">
-                    <video id="localVideoPlayer" controls style="display:none;width:100%;height:100%;object-fit:contain;" controlsList="nodownload">
-                        Your browser does not support the video tag.
-                    </video>
-                    <div id="ytPlayerDiv" style="display:none;width:100%;height:100%;position:absolute;top:0;left:0;"></div>
-                    <div id="ytLoadingSpinner" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000;">
-                        <div style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.1);border-top-color:#8b5cf6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-                        <p style="color:var(--text-muted);margin-top:14px;font-size:0.85rem;">Loading video...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <style>
-        @keyframes modalPop {
-            from { transform: scale(0.88); opacity: 0; }
-            to   { transform: scale(1);   opacity: 1; }
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #ytPlayerDiv { width:100%; height:100%; position:absolute; top:0; left:0; }
-
-        /* Mini Player Styles */
-        body.pip-active #videoModal {
-            background: transparent !important;
-            backdrop-filter: none !important;
-            pointer-events: none;
-        }
-        body.pip-active #videoModalCard {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 280px;
-            max-width: 90vw;
-            pointer-events: auto;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(139,92,246,0.5);
-            animation: none;
-            z-index: 10000;
-        }
-        body.pip-active #modalVideoTitle {
-            display: none;
-        }
-        body.pip-active #videoModalHeader {
-            padding: 6px 10px;
-            justify-content: flex-end;
-        }
-        </style>
-
 
         <!-- Paths Tab Content -->
         <div class="tab-content" id="content-paths">
@@ -1244,481 +1133,77 @@
 </div>
 
 <script>
-const VIDEOS = [
-
-// 🟢 BEGINNER: Fundamentals & Basics
-
-
-{ id:'nzZkKoREEGo', cat:'beginner', title:'Introduction to Cybersecurity | Simplilearn', badge:'Beginner', dur:'3.5 hr', badgeClass:'badge-prereq' },
-
-
-{ id:'9GZlVOafYTg', cat:'beginner', title:'Networking Fundamentals | NetworkChuck', badge:'Beginner', dur:'7 min', badgeClass:'badge-prereq' },
-
-{ id:'IPvYjXCsTg8', cat:'beginner', title:'Computer Networking Full Course | freeCodeCamp', badge:'Beginner', dur:'9 hr', badgeClass:'badge-prereq' },
-
-{ id:'S7MNX_UD7vY', cat:'beginner', title:'TCP/IP and the OSI Model Explained | PowerCert', badge:'Beginner', dur:'9 min', badgeClass:'badge-prereq' },
-
-
-{ id:'gfmRrPjnEw4', cat:'beginner', title:'100 Days of Code - Cyber Edition | David Bombal', badge:'Beginner', dur:'12 min', badgeClass:'badge-prereq' },
-
-{ id:'O4bNwkC1ZxA', cat:'beginner', title:'How Hackers Hack (Explained Simply)', badge:'Beginner', dur:'10 min', badgeClass:'badge-prereq' },
-
-
-
-{ id:'wX75Z-4MEoM', cat:'beginner', title:'Firewalls Explained | Professor Messer', badge:'Beginner', dur:'9 min', badgeClass:'badge-prereq' },
-
-
-
-{ id:'_GzE99AmAQU', cat:'beginner', title:'Introduction to Cryptography | Christoph Paar', badge:'Beginner', dur:'14 min', badgeClass:'badge-prereq' },
-
-
-// 🟡 INTERMEDIATE: Tools & Defense
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-{ id:'hEgWPWIuq_s', cat:'intermediate', title:'Privilege Escalation Linux | TCM Security', badge:'Intermediate', dur:'3 hr', badgeClass:'badge-soc' },
-
-
-
-
-// 🔴 ADVANCED: Deep Dives & Exploits
-
-
-
-
-
-{ id:'VVdmmN0su6E', cat:'advanced', title:'Threat Hunting with ELK Stack | John Hammond', badge:'Advanced', dur:'28 min', badgeClass:'badge-blue-team' },
-
-
-
-{ id:'pL9q2lOZ1Fw', cat:'advanced', title:'Python for Ethical Hacking | freeCodeCamp', badge:'Advanced', dur:'4 hr', badgeClass:'badge-blue-team' },
-
-
-{ id:'qYZF6oIZtfc', cat:'advanced', title:'Red Team vs Blue Team Explained | IBM Tech', badge:'Advanced', dur:'9 min', badgeClass:'badge-blue-team' },
-
-{ id:'2_lswM1S264', cat:'advanced', title:'Kali Linux Full Course | freeCodeCamp', badge:'Advanced', dur:'10 hr', badgeClass:'badge-blue-team' }
-
-];
-
-    function renderVideos(videosToRender = VIDEOS) {
-        const grid = document.getElementById('videoGrid');
-        if (!grid) return;
-        
-        grid.innerHTML = videosToRender.map(v => `
-            <div class="video-card" onclick="openVideoModal('${v.id}', '${(v.title || '').replace(/'/g, "\\'")}')">
-                <div class="video-thumb">
-                    <img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt="${v.title}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;">
-                    <div class="play-overlay">
-                        <div class="play-btn-circle" style="display:flex; align-items:center; justify-content:center;">
-                            <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                        </div>
-                    </div>
-                    <span class="video-duration" style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.8); padding:2px 6px; border-radius:4px; font-size:12px; z-index:3; font-weight:bold;">${v.dur || v.length || 'Video'}</span>
-                </div>
-                <div class="video-info">
-                    <div class="video-badges">
-                        <span class="vbadge ${v.badgeClass || 'badge-soc'}">${v.badge || 'YouTube'}</span>
-                    </div>
-                    <h3>${v.title}</h3>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    let searchTimeout = null;
-    function handleSearch() {
-        const input = document.getElementById('videoSearch');
-        if (!input) return;
-        
-        const query = input.value.trim().toLowerCase();
-        
-        if (searchTimeout) clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(async () => {
-            if (query.length === 0) {
-                renderVideos(VIDEOS);
-                return;
-            }
-            
-            // Local search
-            let localResults = VIDEOS.filter(v => v.title.toLowerCase().includes(query));
-            const grid = document.getElementById('videoGrid');
-            
-            if (localResults.length > 0) {
-                renderVideos(localResults);
-            } else {
-                grid.innerHTML = '<div style="color:var(--text-muted); padding:20px; font-style:italic;">Searching YouTube via bridge...</div>';
-            }
-            
-            // Backend YouTube Bridge Search
-            try {
-                let res;
-                for (let i = 0; i < 3; i++) {
-                    try {
-                        res = await fetch('/api/yt_search?q=' + encodeURIComponent(query));
-                        if (res.ok) break;
-                    } catch (err) {
-                        if (i === 2) throw err;
-                        await new Promise(r => setTimeout(r, 1000));
-                    }
-                }
-                const backendResults = await res.json();
-                
-                let allResults = [...localResults];
-                backendResults.forEach(br => {
-                    if (!allResults.find(r => r.id === br.id)) {
-                        allResults.push(br);
-                    }
-                });
-                
-                if (allResults.length === 0) {
-                    grid.innerHTML = '<div style="color:var(--text-muted); padding:20px;">No results found.</div>';
-                } else {
-                    renderVideos(allResults);
-                }
-            } catch(e) {
-                console.error("Search API error:", e);
-                if (localResults.length === 0) {
-                    grid.innerHTML = '<div style="color:red; padding:20px;">Error reaching YouTube bridge.</div>';
-                }
-            }
-        }, 500);
-    }
-
-    const ROADMAP_FOLDERS = [
-        { 
-            id: 'soc', title: 'Blue Team (Defensive)', desc: 'Step-by-step path from beginner to SOC Analyst.', img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=500&q=80', 
-            flowImg: "{{ url_for('static', filename='blue_flow.png') }}",
-            videos: ['nzZkKoREEGo', '9GZlVOafYTg', 'wX75Z-4MEoM'],
-            color: '#3b82f6',
-            nodes: ['Network Fundamentals', 'Log Analysis', 'Threat Hunting', 'Incident Response']
-        },
-        { 
-            id: 'pentest', title: 'Red Team (Offensive)', desc: 'Become an ethical hacker and exploit vulnerabilities.', img: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=500&q=80', 
-            flowImg: "{{ url_for('static', filename='red_flow.png') }}",
-            videos: ['S7MNX_UD7vY', 'wX75Z-4MEoM', '2_lswM1S264'],
-            color: '#ef4444',
-            nodes: ['Reconnaissance', 'Vulnerability Scanning', 'Exploitation', 'Post-Exploitation']
-        },
-        { 
-            id: 'purple', title: 'Purple Team (Adversary Sim)', desc: 'Bridge the gap between offense and defense.', img: 'https://images.unsplash.com/photo-1614064641913-a53b53c1374b?w=500&q=80', 
-            flowImg: "{{ url_for('static', filename='purple_flow.png') }}",
-            videos: ['qYZF6oIZtfc', 'pL9q2lOZ1Fw'],
-            color: '#8b5cf6',
-            nodes: ['Threat Modeling', 'Attack Emulation', 'Detection Engineering', 'Continuous Improvement']
-        }
+const BOOKS = [
+        { id: 'b1', title: 'The Web Application Hacker\'s Handbook', desc: 'Discovering and Exploiting Security Flaws', level: 'advanced', tag: 'Web', author: 'Dafydd Stuttard', readLink: '#' },
+        { id: 'b2', title: 'Practical Packet Analysis', desc: 'Using Wireshark to Solve Real-World Network Problems', level: 'beginner', tag: 'Network', author: 'Chris Sanders', readLink: '#' },
+        { id: 'b3', title: 'Black Hat Python', desc: 'Python Programming for Hackers and Pentesters', level: 'intermediate', tag: 'Scripting', author: 'Justin Seitz', readLink: '#' },
+        { id: 'b4', title: 'The Art of Deception', desc: 'Controlling the Human Element of Security', level: 'beginner', tag: 'Social Eng', author: 'Kevin Mitnick', readLink: '#' },
+        { id: 'b5', title: 'Advanced Penetration Testing', desc: 'Hacking the World\'s Most Secure Networks', level: 'advanced', tag: 'Red Team', author: 'Wil Allsopp', readLink: '#' }
     ];
 
-    function setVideoMode(mode) {
-        document.getElementById('btn-mode-library').classList.remove('active');
-        document.getElementById('btn-mode-roadmaps').classList.remove('active');
-        
-        document.getElementById('video-library-view').style.display = 'none';
-        document.getElementById('video-roadmaps-view').style.display = 'none';
-        
-        if (mode === 'library') {
-            document.getElementById('btn-mode-library').classList.add('active');
-            document.getElementById('video-library-view').style.display = 'block';
-        } else {
-            document.getElementById('btn-mode-roadmaps').classList.add('active');
-            document.getElementById('video-roadmaps-view').style.display = 'block';
-            renderRoadmapFolders();
+    function renderBooks(booksToRender = BOOKS) {
+        const grid = document.getElementById('bookGrid');
+        if(!grid) return;
+        grid.innerHTML = '';
+        if(booksToRender.length === 0) {
+            grid.innerHTML = '<p style="color:var(--text-muted); grid-column:1/-1;">No books found.</p>';
+            return;
         }
-    }
-
-    function filterVideos(category, btnElement) {
-        document.querySelectorAll('.vfilter').forEach(btn => btn.classList.remove('active'));
-        btnElement.classList.add('active');
         
-        if (category === 'all') {
-            renderVideos(VIDEOS);
-        } else {
-            const filtered = VIDEOS.filter(v => v.cat === category);
-            renderVideos(filtered);
-        }
-    }
-
-    function renderRoadmapFolders() {
-        const grid = document.getElementById('roadmap-folders-grid');
-        grid.innerHTML = ROADMAP_FOLDERS.map(f => `
-            <div class="roadmap-folder-card" style="background:var(--bg-dark); border:1px solid var(--border-color); border-radius:12px; overflow:hidden; cursor:pointer;" onclick="openRoadmap('${f.id}')">
-                <img src="${f.img}" style="width:100%; height:160px; object-fit:cover;">
-                <div style="padding:20px;">
-                    <h3 style="color:#fff; margin-bottom:10px;">${f.title}</h3>
-                    <p style="color:var(--text-muted);">${f.desc}</p>
-                </div>
-            </div>
-        `).join('');
-        document.getElementById('roadmap-folders-grid').style.display = 'grid';
-        document.getElementById('roadmap-playlist-view').style.display = 'none';
-    }
-
-    function openRoadmap(folderId) {
-        const folder = ROADMAP_FOLDERS.find(f => f.id === folderId);
-        if (!folder) return;
-        
-        document.getElementById('roadmap-folders-grid').style.display = 'none';
-        document.getElementById('roadmap-playlist-view').style.display = 'block';
-        
-        document.getElementById('playlist-title').innerText = folder.title;
-        document.getElementById('playlist-desc').innerText = folder.desc;
-
-        // Render Animated Graph & Flow Image
-        const diagramContainer = document.getElementById('playlist-diagram-container');
-        if (diagramContainer && folder.nodes) {
-            diagramContainer.style.display = 'block';
+        booksToRender.forEach(b => {
+            let badgeClass = 'badge-soc';
+            if(b.level === 'beginner') badgeClass = 'badge-blue-team';
+            if(b.level === 'advanced') badgeClass = 'badge-phishing';
             
-            // Add keyframes if not exists
-            if (!document.getElementById('roadmap-keyframes')) {
-                const style = document.createElement('style');
-                style.id = 'roadmap-keyframes';
-                style.innerHTML = `
-                    @keyframes slideInUpNode {
-                        0% { opacity: 0; transform: translateY(20px); }
-                        100% { opacity: 1; transform: translateY(0); }
-                    }
-                    @keyframes drawLineNode {
-                        0% { width: 0; }
-                        100% { width: 100%; }
-                    }
-                    @keyframes breathGlow {
-                        0% { box-shadow: 0 0 15px rgba(255,255,255,0.1); }
-                        50% { box-shadow: 0 0 35px var(--glow-color); }
-                        100% { box-shadow: 0 0 15px rgba(255,255,255,0.1); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-
-            let nodesHtml = folder.nodes.map((node, i) => `
-                <div style="display:flex; flex-direction:column; align-items:center; position:relative; flex:1; animation: slideInUpNode 0.5s ease forwards; animation-delay: ${i * 0.2}s; opacity:0; min-width:120px;">
-                    <div style="width:60px; height:60px; border-radius:50%; background:var(--bg-dark); box-shadow:0 0 25px ${folder.color}55; border:3px solid ${folder.color}; display:flex; align-items:center; justify-content:center; margin-bottom:15px; position:relative; z-index:2; color:white; font-weight:bold; font-size:20px; transition:all 0.3s;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 35px ${folder.color}88';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0 25px ${folder.color}55';">
-                        ${i + 1}
-                    </div>
-                    <div style="text-align:center; color:white; font-weight:600; font-size:14px; text-shadow:0 2px 4px rgba(0,0,0,0.8);">${node}</div>
-                    ${i < folder.nodes.length - 1 ? `<div style="position:absolute; top:30px; left:50%; height:3px; background:${folder.color}; z-index:1; animation: drawLineNode 0.5s ease forwards; animation-delay: ${(i * 0.2) + 0.3}s; width:0; transform-origin: left; box-shadow:0 0 10px ${folder.color};"></div>` : ''}
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            card.innerHTML = `
+                <div class="video-thumb" style="background:#1a1a2e; display:flex; align-items:center; justify-content:center; padding-bottom:120%; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size:4rem;">📖</div>
                 </div>
-            `).join('');
-
-            diagramContainer.innerHTML = `
-                ${folder.flowImg ? `<div style="--glow-color: ${folder.color}; width:100%; border-radius:16px; overflow:hidden; margin-bottom:30px; animation: breathGlow 4s infinite ease-in-out; border:1px solid ${folder.color};"><img src="${folder.flowImg}" style="width:100%; display:block; object-fit:cover; max-height:400px;"></div>` : ''}
-                <div style="background:linear-gradient(135deg, rgba(0,0,0,0.4), rgba(0,0,0,0.1)); border:1px solid var(--border-color); border-radius:16px; padding:50px 20px; display:flex; justify-content:space-between; align-items:flex-start; overflow-x:auto; position:relative;">
-                    <div style="position:absolute; top:10px; left:20px; color:${folder.color}; font-size:12px; font-weight:bold; text-transform:uppercase; letter-spacing:1px;">Progress Path</div>
-                    ${nodesHtml}
+                <div class="video-meta">
+                    <h4>${b.title}</h4>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:12px;">By ${b.author}</p>
+                    <div class="video-meta-row">
+                        <span class="video-badge ${badgeClass}">${b.level}</span>
+                        <span class="video-badge" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#ccc;">${b.tag}</span>
+                    </div>
+                    <button style="width:100%; margin-top:16px; padding:8px; border-radius:6px; background:var(--accent-purple); color:#fff; font-weight:bold; cursor:pointer; border:none; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px var(--accent-purple-glow)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">Read Now</button>
                 </div>
             `;
-        } else if (diagramContainer) {
-            diagramContainer.style.display = 'none';
+            grid.appendChild(card);
+        });
+    }
+
+    function handleBookSearch() {
+        const input = document.getElementById('bookSearch');
+        if (!input) return;
+        const query = input.value.trim().toLowerCase();
+        
+        if (query.length === 0) {
+            renderBooks(BOOKS);
+            return;
         }
         
-        const playlistVideos = folder.videos.map(vid => VIDEOS.find(v => v.id === vid)).filter(v => v);
+        const results = BOOKS.filter(b => b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query) || b.tag.toLowerCase().includes(query));
+        renderBooks(results);
+    }
+
+    function filterBooks(category, btnElement) {
+        document.querySelectorAll('.vfilter').forEach(btn => btn.classList.remove('active'));
+        if(btnElement) btnElement.classList.add('active');
         
-        const grid = document.getElementById('playlist-grid');
-        grid.innerHTML = playlistVideos.map(v => `
-            <div class="video-card" onclick="openVideoModal('${v.id}', '${(v.title || '').replace(/'/g, "\\'")}')">
-                <div class="video-thumb">
-                    <img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt="${v.title}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;">
-                    <div class="play-overlay">
-                        <div class="play-btn-circle" style="display:flex; align-items:center; justify-content:center;">
-                            <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                        </div>
-                    </div>
-                    <span class="video-duration" style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.8); padding:2px 6px; border-radius:4px; font-size:12px; z-index:3; font-weight:bold;">${v.dur || v.length || 'Video'}</span>
-                </div>
-                <div class="video-info">
-                    <div class="video-badges">
-                        <span class="vbadge ${v.badgeClass || 'badge-soc'}">${v.badge || 'YouTube'}</span>
-                    </div>
-                    <h3>${v.title}</h3>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    function backToFolders() {
-        document.getElementById('roadmap-folders-grid').style.display = 'grid';
-        document.getElementById('roadmap-playlist-view').style.display = 'none';
-    }
-
-    function _showLoading(show) {
-        document.getElementById('ytLoadingSpinner').style.display = show ? 'flex' : 'none';
-    }
-
-    let currentVideoId = null;
-    let currentLocalVideo = null;
-
-    let isStudyMode = false;
-    let currentRequestVersion = 0;
-
-    function togglePlayerMode(event) {
-        if (event) event.stopPropagation();
-        isStudyMode = !isStudyMode;
-        const btn = document.getElementById('btnPlayerToggle');
-        if (isStudyMode) {
-            btn.innerText = "Safe Mode (Songs)";
-            btn.title = "Switch back to the anti-block bridge for songs";
-            btn.style.borderColor = "#f59e0b"; // yellow
-            btn.onmouseover = function() { this.style.background = 'rgba(245,158,11,0.5)' };
+        if (category === 'all') {
+            renderBooks(BOOKS);
         } else {
-            btn.innerText = "HQ Mode (Study)";
-            btn.title = "Switch to YouTube native player for high quality";
-            btn.style.borderColor = "rgba(139,92,246,0.5)"; // purple
-            btn.onmouseover = function() { this.style.background = 'rgba(139,92,246,0.5)' };
-        }
-        btn.style.background = 'rgba(255,255,255,0.1)';
-        
-        // Reload video
-        if (currentVideoId) {
-            openVideoModal(currentVideoId, document.getElementById('modalVideoTitle').innerText, true);
+            const filtered = BOOKS.filter(b => b.level === category);
+            renderBooks(filtered);
         }
     }
 
-    function openVideoModal(videoId, title, isReload=false) {
-        currentRequestVersion++;
-        const myRequestVersion = currentRequestVersion;
-
-        const vData = VIDEOS.find(v => v.id === videoId) || {};
-        currentVideoId = videoId;
-        
-        document.getElementById('modalVideoTitle').innerText = title || vData.title || 'Watch Video';
-
-        const localPlayer = document.getElementById('localVideoPlayer');
-        const ytDiv = document.getElementById('ytPlayerDiv');
-
-        // Fully stop local player to prevent overlapping audio
-        localPlayer.pause();
-        localPlayer.removeAttribute('src');
-        localPlayer.load();
-        localPlayer.style.display = 'none';
-        
-        ytDiv.style.display = 'none';
-        ytDiv.innerHTML = ''; 
-        
-        if (vData.type === 'local') {
-            _showLoading(false);
-            localPlayer.style.display = 'block';
-            localPlayer.src = vData.src; 
-            currentLocalVideo = vData.src; 
-            localPlayer.play().catch(e => console.log('Autoplay blocked'));
-        } else {
-            if (isStudyMode) {
-                // HQ Study Mode - Uses YouTube Iframe
-                ytDiv.style.display = 'block';
-                _showLoading(true);
-                ytDiv.innerHTML = `<iframe 
-                    width="100%" 
-                    height="100%" 
-                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen
-                    onload="document.getElementById('ytLoadingSpinner').style.display='none'"
-                    style="background: #000;"
-                ></iframe>`;
-            } else {
-                // Safe Song Mode - Uses backend yt-dlp bridge
-                ytDiv.style.display = 'none';
-                localPlayer.style.display = 'block';
-                _showLoading(true);
-                const fetchWithRetry = async (url, retries = 3) => {
-                    for (let i = 0; i < retries; i++) {
-                        try {
-                            const response = await fetch(url);
-                            if (response.ok) return await response.json();
-                            throw new Error(`HTTP ${response.status}`);
-                        } catch (e) {
-                            if (i === retries - 1) throw e;
-                            await new Promise(r => setTimeout(r, 1000 * (i + 1))); // exponential backoff
-                        }
-                    }
-                    throw new Error("Max retries reached");
-                };
-
-                fetchWithRetry('/api/yt_stream/' + videoId)
-                    .then(data => {
-                        if (myRequestVersion !== currentRequestVersion) return; // Stale request, ignore
-                        _showLoading(false);
-                        if (data.success && data.url) {
-                            localPlayer.src = data.url;
-                            currentLocalVideo = data.url;
-                            localPlayer.play().catch(e => console.log('Autoplay blocked'));
-                        } else {
-                            alert("Error loading video stream: " + (data.error || "Unknown error"));
-                        }
-                    })
-                    .catch(e => {
-                        if (myRequestVersion !== currentRequestVersion) return; // Stale request, ignore
-                        _showLoading(false);
-                        console.error('Bridge error:', e);
-                        alert("Failed to bridge connection to YouTube after retries.");
-                    });
-            }
-        }
-
-        document.getElementById('videoModal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeVideoModal() {
-        document.body.classList.remove('pip-active');
-        document.getElementById('videoModal').style.display = 'none';
-        document.body.style.overflow = '';
-        const localPlayer = document.getElementById('localVideoPlayer');
-        if (localPlayer) {
-            localPlayer.pause();
-            localPlayer.removeAttribute('src');
-            localPlayer.load();
-        }
-        document.getElementById('ytPlayerDiv').innerHTML = '';
-        currentVideoId = null;
-        currentLocalVideo = null;
-    }
-
-    function toggleMiniPlayer(e) {
-        if (e) e.stopPropagation();
-        const isPip = document.body.classList.toggle('pip-active');
-        if (isPip) {
-            document.body.style.overflow = '';
-        } else {
-            document.body.style.overflow = 'hidden';
-        }
-    }
-    
-    function popOutVideo(e) {
-        if (e) e.stopPropagation();
-        
-        let popUrl = '';
-        if (currentVideoId) {
-            popUrl = `https://www.youtube.com/embed/${currentVideoId}?autoplay=1`;
-        } else if (currentLocalVideo) {
-            popUrl = currentLocalVideo;
-        }
-        
-        if (popUrl) {
-            window.open(popUrl, 'CyberPlayer', 'width=480,height=270,left=100,top=100,resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,directories=no,status=no');
-            closeVideoModal();
-        }
-    }
-
-    function handleModalClick(e) {
-        if (e.target === document.getElementById('videoModal')) {
-            if (!document.body.classList.contains('pip-active')) {
-                closeVideoModal();
-            }
-        }
-    }
-
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVideoModal(); });
+    document.addEventListener('DOMContentLoaded', () => {
+        renderBooks();
+    });
 
     // ── Dynamic Paths Data ───────────────────────────────────────────────────
     const PATHS = [
@@ -1969,7 +1454,7 @@ const VIDEOS = [
     }
 
     // ── Init ─────────────────────────────────────────────────────────────────
-    renderVideos();
+    renderBooks();
     renderPaths();
     showPathSelector(); // Start Paths tab in selector view
 </script>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberSpace Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #050a0f; color: white; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #111; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+        .pulse-live {
+            width: 8px; height: 8px; border-radius: 50%;
+            animation: pulse-ring 2s infinite; display: inline-block;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(255,255,255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255,255,255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,255,255, 0); }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+    <!-- Navbar -->
+    <nav class="bg-black border-b border-slate-800 p-4 flex justify-between items-center z-10">
+        <div class="flex items-center gap-4">
+            <span class="text-white font-black text-xl tracking-widest uppercase">Admin<span class="text-emerald-500">Panel</span></span>
+            <span class="text-slate-500 text-sm mono">Omniscient View</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="/dashboard" class="text-sm text-slate-400 hover:text-white transition mono">Exit to Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Sidebar: Active Lobbies -->
+        <div class="w-64 bg-[#0a0f14] border-r border-slate-800 flex flex-col">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <span class="text-xs text-slate-400 mono uppercase font-bold tracking-widest">Active Lobbies</span>
+                <button onclick="fetchLobbies()" class="text-slate-400 hover:text-white"><span class="material-icons text-sm">refresh</span></button>
+            </div>
+            <div id="lobby-list" class="flex-1 overflow-y-auto p-2 space-y-2">
+                <!-- Lobbies injected here -->
+            </div>
+        </div>
+
+        <!-- Main Content: Gamemaster Dashboard -->
+        <div class="flex-1 flex flex-col bg-[#111]">
+            <div class="bg-slate-900/60 p-3 text-sm font-mono text-slate-300 flex items-center justify-between gap-2 border-b border-slate-700/40">
+                <div class="flex items-center gap-3">
+                    <span class="pulse-live" style="background:white"></span> 
+                    GAMEMASTER DASHBOARD
+                    <span id="current-lobby-display" class="text-slate-500 text-xs ml-4">No lobby selected</span>
+                </div>
+            </div>
+
+            <div class="flex-1 grid grid-cols-3 min-h-0 divide-x divide-slate-800" id="admin-controls-area" style="opacity: 0.3; pointer-events: none;">
+                <!-- Left: Global Traffic -->
+                <div class="col-span-2 flex flex-col bg-black">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/40">
+                        <span class="text-xs text-slate-400 mono uppercase tracking-widest font-bold">Global Event Logs</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                        <div id="white-traffic" class="font-mono text-xs text-slate-400 whitespace-pre-wrap leading-relaxed select-text cursor-text">Waiting for game events...</div>
+                    </div>
+                </div>
+
+                <!-- Right: Gamemaster Actions -->
+                <div class="col-span-1 flex flex-col bg-[#050505] p-6 space-y-6">
+                    <div>
+                        <h3 class="text-white font-bold mb-2 mono">Background Noise Injection</h3>
+                        <p class="text-xs text-slate-500 mb-3">Flood the network with benign traffic to confuse Blue Team log analysis.</p>
+                        <button onclick="injectNoise()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded mono text-xs w-full transition">INJECT TRAFFIC BURST</button>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-white font-bold mb-2 mono">Network Degradation</h3>
+                        <p class="text-xs text-slate-500 mb-3">Simulate high latency and packet loss affecting both teams.</p>
+                        <div class="flex gap-2">
+                            <button onclick="toggleNetworkLatency(true)" class="bg-orange-700 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded mono text-xs flex-1 transition">ENABLE LAG</button>
+                            <button onclick="toggleNetworkLatency(false)" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded mono text-xs flex-1 transition">RESTORE NET</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-white font-bold mb-2 mono">Hardware Manipulation</h3>
+                        <p class="text-xs text-slate-500 mb-3">Drop a malicious USB inside the facility to instantly bypass external WAF protections.</p>
+                        <button onclick="triggerHardwareEvent()" class="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded mono text-xs w-full transition border border-red-500">⚠ TRIGGER USB DROP</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLobbyId = null;
+        let pollInterval = null;
+
+        async function fetchLobbies() {
+            try {
+                const res = await fetch('/api/admin/lobbies');
+                const data = await res.json();
+                
+                const list = document.getElementById('lobby-list');
+                list.innerHTML = '';
+                
+                if (!data.lobbies || data.lobbies.length === 0) {
+                    list.innerHTML = '<div class="text-slate-500 text-xs p-2 mono">No active lobbies.</div>';
+                    return;
+                }
+                
+                data.lobbies.forEach(lobby => {
+                    const btn = document.createElement('button');
+                    btn.className = `w-full text-left p-3 rounded mono text-xs transition border ${currentLobbyId === lobby.id ? 'bg-slate-800 border-slate-600 text-white' : 'bg-transparent border-slate-800 text-slate-400 hover:bg-slate-900/50'}`;
+                    btn.innerHTML = `
+                        <div class="font-bold mb-1">${lobby.id}</div>
+                        <div class="flex justify-between items-center text-[10px]">
+                            <span class="${lobby.status === 'active' ? 'text-emerald-400' : 'text-amber-400'}">${lobby.status.toUpperCase()}</span>
+                            <span>${lobby.scenario}</span>
+                        </div>
+                    `;
+                    btn.onclick = () => selectLobby(lobby.id);
+                    list.appendChild(btn);
+                });
+            } catch (err) {
+                console.error("Failed to fetch lobbies", err);
+            }
+        }
+
+        function selectLobby(id) {
+            currentLobbyId = id;
+            document.getElementById('current-lobby-display').textContent = `Lobby: ${id}`;
+            document.getElementById('admin-controls-area').style.opacity = '1';
+            document.getElementById('admin-controls-area').style.pointerEvents = 'auto';
+            document.getElementById('white-traffic').innerHTML = 'Connecting to matrix...';
+            
+            fetchLobbies(); // Refresh list to update active selection UI
+            
+            if (pollInterval) clearInterval(pollInterval);
+            pollLobbyState();
+            pollInterval = setInterval(pollLobbyState, 1500);
+        }
+
+        async function pollLobbyState() {
+            if (!currentLobbyId) return;
+            try {
+                const res = await fetch(`/api/game/state/${currentLobbyId}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    const traffic = document.getElementById('white-traffic');
+                    if (data.logs) {
+                        const newTraffic = data.logs.join('\\n');
+                        if (traffic.innerHTML !== newTraffic) {
+                            traffic.innerHTML = newTraffic;
+                            traffic.scrollTop = traffic.scrollHeight;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to poll lobby state", err);
+            }
+        }
+
+        // Gamemaster Actions
+        async function injectNoise() {
+            if(!currentLobbyId) return;
+            try {
+                const res = await fetch('/api/game/inject_noise', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ lobby_id: currentLobbyId })
+                });
+                const data = await res.json();
+                if(data.success) console.log("Noise injected!");
+                else alert(data.error || "Failed to inject noise");
+            } catch (err) { console.error("Failed to inject noise", err); }
+        }
+
+        async function toggleNetworkLatency(enable) {
+            if(!currentLobbyId) return;
+            try {
+                const res = await fetch('/api/game/network_degrade', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ lobby_id: currentLobbyId, enable: enable })
+                });
+                const data = await res.json();
+                if(data.success) console.log("Network latency updated!");
+                else alert(data.error || "Failed to set latency");
+            } catch (err) { console.error("Failed to set latency", err); }
+        }
+
+        async function triggerHardwareEvent() {
+            if(!currentLobbyId) return;
+            try {
+                const res = await fetch('/api/game/hardware_event', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ lobby_id: currentLobbyId })
+                });
+                const data = await res.json();
+                if(data.success) console.log("Hardware event triggered!");
+                else alert(data.error || "Failed to trigger event");
+            } catch (err) { console.error("Failed to trigger hardware event", err); }
+        }
+
+        // Init
+        fetchLobbies();
+        setInterval(fetchLobbies, 5000); // Auto-refresh lobbies list
+    </script>
+</body>
+</html>
