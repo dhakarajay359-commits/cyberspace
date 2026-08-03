@@ -141,6 +141,10 @@ def init_db():
         c.execute('ALTER TABLE lobbies ADD COLUMN target_url TEXT')
     except sqlite3.OperationalError:
         pass
+    try:
+        c.execute('ALTER TABLE lobbies ADD COLUMN white_invite_code TEXT')
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS lobby_members (
             lobby_id TEXT NOT NULL,
@@ -411,11 +415,12 @@ def create_lobby():
     lobby_id = str(uuid.uuid4())[:8]
     red_invite_code = 'R-' + str(uuid.uuid4())[:6]
     blue_invite_code = 'B-' + str(uuid.uuid4())[:6]
+    white_invite_code = 'W-' + str(uuid.uuid4())[:6]
     
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("INSERT INTO lobbies (id, host_username, max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag, target_url, difficulty_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-              (lobby_id, session['user'], max_players, scenario, red_invite_code, blue_invite_code, custom_desc, custom_flag, target_url, difficulty_level))
+    c.execute("INSERT INTO lobbies (id, host_username, max_players, scenario, red_invite_code, blue_invite_code, white_invite_code, custom_desc, custom_flag, target_url, difficulty_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+              (lobby_id, session['user'], max_players, scenario, red_invite_code, blue_invite_code, white_invite_code, custom_desc, custom_flag, target_url, difficulty_level))
     c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
               (lobby_id, session['user'], host_team))
     conn.commit()
@@ -435,9 +440,10 @@ def create_lobby():
         'status': 'waiting',
         'target_state': 'packed',
         'presence': {},
-        'winner': None
+        'winner': None,
+        'network_latency': False
     }
-    return jsonify({"success": True, "lobby_id": lobby_id, "red_invite_code": red_invite_code, "blue_invite_code": blue_invite_code})
+    return jsonify({"success": True, "lobby_id": lobby_id, "red_invite_code": red_invite_code, "blue_invite_code": blue_invite_code, "white_invite_code": white_invite_code})
 
 
 @app.route('/api/game/attack', methods=['POST'])
@@ -457,6 +463,12 @@ def game_attack():
     game = active_games.get(lobby_id)
     if not game or game['status'] != 'active':
         return jsonify({"success": False, "error": "Game not found or inactive"})
+        
+    if game.get('network_latency'):
+        time.sleep(2)
+        import random
+        if random.random() < 0.2:
+            return jsonify({"success": False, "error": "Connection timed out (Network Latency Simulator)"})
         
     blocked = any(re.search(rule, payload, re.IGNORECASE) for rule in game['rules'] if rule)
     timestamp = time.strftime('%H:%M:%S')
@@ -501,6 +513,12 @@ def game_defend():
     game = active_games.get(lobby_id)
     if not game or game['status'] != 'active':
         return jsonify({"success": False, "error": "Game inactive"})
+        
+    if game.get('network_latency'):
+        time.sleep(2)
+        import random
+        if random.random() < 0.2:
+            return jsonify({"success": False, "error": "Connection timed out (Network Latency Simulator)"})
 
     try:
         compiled_rule = re.compile(rule, re.IGNORECASE)
@@ -647,7 +665,7 @@ from flask import jsonify, request, session
 def get_lobby_status(lobby_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT host_username, max_players, status, target_url, red_invite_code, blue_invite_code, scenario, custom_desc FROM lobbies WHERE id = ?", (lobby_id,))
+    c.execute("SELECT host_username, max_players, status, target_url, red_invite_code, blue_invite_code, scenario, custom_desc, white_invite_code FROM lobbies WHERE id = ?", (lobby_id,))
     lobby = c.fetchone()
     if not lobby:
         conn.close()
@@ -659,10 +677,12 @@ def get_lobby_status(lobby_id):
     
     red_team = [m[0] for m in members if m[1] == 'red']
     blue_team = [m[0] for m in members if m[1] == 'blue']
+    white_team = [m[0] for m in members if m[1] == 'white']
     
     leaders = {
         "red": red_team[0] if len(red_team) > 0 else None,
-        "blue": blue_team[0] if len(blue_team) > 0 else None
+        "blue": blue_team[0] if len(blue_team) > 0 else None,
+        "white": white_team[0] if len(white_team) > 0 else None
     }
     
     
@@ -702,7 +722,8 @@ def get_lobby_status(lobby_id):
         "blue_invite_code": lobby[5],
         "scenario": lobby[6],
         "custom_desc": lobby[7] if len(lobby) > 7 else '',
-        "members": {"red": red_team, "blue": blue_team},
+        "white_invite_code": lobby[8] if len(lobby) > 8 else '',
+        "members": {"red": red_team, "blue": blue_team, "white": white_team},
         "leaders": leaders,
         "is_leader": session.get('user') in leaders.values(),
         "connected_users": connected_users,
@@ -735,6 +756,7 @@ def join_lobby():
     team = None
     red_code = None
     blue_code = None
+    white_code = None
     
     if role == 'leader':
         lobby_id = data.get('lobby_id')
@@ -743,7 +765,7 @@ def join_lobby():
             conn.close()
             return jsonify({"success": False, "error": "Lobby ID and team are required"}), 400
             
-        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status FROM lobbies WHERE id = ?", (lobby_id,))
+        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status, white_invite_code FROM lobbies WHERE id = ?", (lobby_id,))
         lobby = c.fetchone()
         if not lobby:
             conn.close()
@@ -753,13 +775,14 @@ def join_lobby():
         red_code = lobby[2]
         blue_code = lobby[3]
         lobby_status = lobby[4]
+        white_code = lobby[5] if len(lobby) > 5 else None
     else:
         invite_code = data.get('invite_code')
         if not invite_code:
             conn.close()
             return jsonify({"success": False, "error": "Invite code required"}), 400
             
-        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status FROM lobbies WHERE red_invite_code = ? OR blue_invite_code = ?", (invite_code, invite_code))
+        c.execute("SELECT id, max_players, red_invite_code, blue_invite_code, status, white_invite_code FROM lobbies WHERE red_invite_code = ? OR blue_invite_code = ? OR white_invite_code = ?", (invite_code, invite_code, invite_code))
         lobby = c.fetchone()
         if not lobby:
             conn.close()
@@ -770,7 +793,13 @@ def join_lobby():
         red_code = lobby[2]
         blue_code = lobby[3]
         lobby_status = lobby[4]
-        team = 'red' if invite_code == lobby[2] else 'blue'
+        white_code = lobby[5] if len(lobby) > 5 else None
+        if invite_code == red_code:
+            team = 'red'
+        elif invite_code == blue_code:
+            team = 'blue'
+        else:
+            team = 'white'
         
     team_size = max_players // 2
     
@@ -790,22 +819,23 @@ def join_lobby():
         if actual_team != team:
             # For local testing, allow the user to join as the other team (Demo Mode behavior)
             return jsonify({"success": True, "message": "Joined as opposite team for testing", "lobby_id": lobby_id, "team": team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status, "demo": True})
-        return jsonify({"success": True, "message": "Already in lobby", "lobby_id": lobby_id, "team": actual_team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status})
+        return jsonify({"success": True, "message": "Already in lobby", "lobby_id": lobby_id, "team": actual_team, "red_code": red_code, "blue_code": blue_code, "white_code": white_code, "status": lobby_status})
         
-    # Check if team is full
-    c.execute("SELECT COUNT(*) FROM lobby_members WHERE lobby_id = ? AND team = ?", (lobby_id, team))
-    current_team_size = c.fetchone()[0]
-
-    if current_team_size >= team_size:
-        conn.close()
-        return jsonify({"success": False, "error": f"This team is full. The leader has set a limit of {team_size} players per team."}), 400
+    # Check if team is full (except White team which can have multiple observers)
+    if team != 'white':
+        c.execute("SELECT COUNT(*) FROM lobby_members WHERE lobby_id = ? AND team = ?", (lobby_id, team))
+        current_team_size = c.fetchone()[0]
+    
+        if current_team_size >= team_size:
+            conn.close()
+            return jsonify({"success": False, "error": f"This team is full. The leader has set a limit of {team_size} players per team."}), 400
         
     c.execute("INSERT INTO lobby_members (lobby_id, username, team) VALUES (?, ?, ?)",
               (lobby_id, session['user'], team))
     conn.commit()
     conn.close()
     
-    return jsonify({"success": True, "lobby_id": lobby_id, "team": team, "red_code": red_code, "blue_code": blue_code, "status": lobby_status})
+    return jsonify({"success": True, "lobby_id": lobby_id, "team": team, "red_code": red_code, "blue_code": blue_code, "white_code": white_code, "status": lobby_status})
 
 @app.route('/api/lobby/start', methods=['POST'])
 @login_required
@@ -826,7 +856,7 @@ def start_lobby():
     conn.close()
     active_games[lobby_id] = {
         'health': 100, 'rules': [], 'logs': [], 'status': 'active', 
-        'presence': {}, 'winner': None, 'target_state': 'packed', 'real_payloads': []
+        'presence': {}, 'winner': None, 'target_state': 'packed', 'real_payloads': [], 'network_latency': False
     }
     
     target_info = {}
@@ -976,6 +1006,79 @@ def game_flag():
         return jsonify({"success": False, "error": "Missing parameters"}), 400
         
     return jsonify(submit_flag(lobby_id, team, flag))
+
+# === GAMEMASTER (WHITE TEAM) ENDPOINTS ===
+
+@app.route('/api/game/inject_noise', methods=['POST'])
+@login_required
+def inject_noise():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False}), 404
+        
+    import random
+    benign_payloads = [
+        "GET /login HTTP/1.1",
+        "GET /static/css/style.css HTTP/1.1",
+        "POST /api/user/status HTTP/1.1",
+        "GET /index.html?ref=google HTTP/1.1",
+        "GET /favicon.ico HTTP/1.1"
+    ]
+    for _ in range(5):
+        payload = random.choice(benign_payloads)
+        ts = time.strftime('%H:%M:%S')
+        game.setdefault('real_payloads', []).append({"timestamp": ts, "payload": payload, "blocked": False, "encrypted": base64.b64encode(payload.encode()).decode()})
+        game['logs'].append(f"<span class='text-slate-400'>[{ts}] [BACKGROUND NOISE] Traffic: `{payload}`</span>")
+    
+    socketio.emit('live_event_update', {'message': 'Background noise injected'}, room=lobby_id)
+    return jsonify({"success": True})
+
+@app.route('/api/game/network_degrade', methods=['POST'])
+@login_required
+def network_degrade():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    enable = data.get('enable', False)
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False}), 404
+        
+    game['network_latency'] = enable
+    status_str = "ENABLED" if enable else "DISABLED"
+    game['logs'].append(f"<span class='text-orange-400 font-bold'>[{time.strftime('%H:%M:%S')}] [NETWORK EVENT] High Latency / Packet Loss {status_str}</span>")
+    socketio.emit('live_event_update', {'message': f'Network degradation {status_str}'}, room=lobby_id)
+    return jsonify({"success": True})
+
+@app.route('/api/game/hardware_event', methods=['POST'])
+@login_required
+def hardware_event():
+    data = request.json or {}
+    lobby_id = data.get('lobby_id')
+    game = active_games.get(lobby_id)
+    if not game:
+        return jsonify({"success": False}), 404
+        
+    game['target_state'] = 'unpacked'
+    game['logs'].append(f"<span class='text-red-600 font-bold'>[{time.strftime('%H:%M:%S')}] [HARDWARE EVENT] Malicious USB Dropped in facility! WAF bypassed. Target compromised.</span>")
+    socketio.emit('live_event_update', {'message': 'Critical Hardware Security Event'}, room=lobby_id)
+    return jsonify({"success": True})
+
+@app.route('/api/game/pcap/<lobby_id>', methods=['GET'])
+@login_required
+def get_pcap(lobby_id):
+    game = active_games.get(lobby_id)
+    if not game:
+        return "Game not found", 404
+    
+    # Generate a dummy PCAP format text containing recent payloads for forensic analysis
+    pcap_data = "PCAP DUMP START\n================\n"
+    for p in game.get('real_payloads', []):
+        pcap_data += f"Time: {p['timestamp']}\nPayload: {p['payload']}\nBlocked: {p['blocked']}\n---\n"
+    pcap_data += "================\nPCAP DUMP END"
+    
+    return Response(pcap_data, mimetype='text/plain', headers={"Content-Disposition": f"attachment;filename=network_capture_{lobby_id}.pcap.txt"})
 
 @app.route('/api/tools/red/<scenario>', methods=['GET'])
 @login_required

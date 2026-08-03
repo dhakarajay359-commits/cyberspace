@@ -29,7 +29,8 @@ def spawn_target(lobby_id, scenario="sqli_login"):
         images = {
             "sqli_login": "bkimminich/juice-shop", # Using OWASP Juice Shop as a proxy for vulnerable web apps
             "web_breach": "vulnerables/web-dvwa",
-            "ransomware": "vulnerables/cve-2014-6271" # Shellshock vulnerable target
+            "ransomware": "vulnerables/cve-2014-6271", # Shellshock vulnerable target
+            "scada_breach": "wdenniss/modbus-simulator" # Simulated OT target
         }
         
         image_name = images.get(scenario, "bkimminich/juice-shop")

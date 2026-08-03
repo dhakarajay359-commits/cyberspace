@@ -132,7 +132,7 @@ let currentLobbyId = null;
 
 
 
-function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
+function showWaitingRoom(lobbyId, redCode = '', blueCode = '', whiteCode = '') {
             socket.emit('join_game_room', {lobby_id: currentLobbyId, username: myTeam});
             document.getElementById('lobby-modal').classList.add('hidden');
 
@@ -145,6 +145,8 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
             if (redCode) document.getElementById('display-red-code').textContent = redCode;
 
             if (blueCode) document.getElementById('display-blue-code').textContent = blueCode;
+
+            if (whiteCode && document.getElementById('display-white-code')) document.getElementById('display-white-code').textContent = whiteCode;
 
             // Hide opposing team's invite code for Solo Demo Mode focus
             if (isHost) {
@@ -167,6 +169,8 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
             window._redCode = redCode;
 
             window._blueCode = blueCode;
+            
+            window._whiteCode = whiteCode;
 
             window._demoLobbyId = lobbyId;
 
@@ -404,6 +408,7 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
                 if(data.success) {
                     if (data.red_invite_code) document.getElementById('display-red-code').textContent = data.red_invite_code;
                     if (data.blue_invite_code) document.getElementById('display-blue-code').textContent = data.blue_invite_code;
+                    if (data.white_invite_code && document.getElementById('display-white-code')) document.getElementById('display-white-code').textContent = data.white_invite_code;
                     if (data.scenario) window.currentScenario = data.scenario;
                     if (data.custom_desc) window.customDesc = data.custom_desc;
                     
@@ -413,6 +418,10 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
                     }
                     if (isHost || (data.is_leader && myTeam === 'blue')) {
                         document.getElementById('blue-invite-container').classList.remove('hidden');
+                    }
+                    if (isHost || (data.is_leader && myTeam === 'white')) {
+                        const whiteContainer = document.getElementById('white-invite-container');
+                        if(whiteContainer) whiteContainer.classList.remove('hidden');
                     }
                     
                     // Show force start button to leaders
@@ -523,8 +532,21 @@ function showWaitingRoom(lobbyId, redCode = '', blueCode = '') {
             if (myTeam === 'red') {
                 document.getElementById('red-controls').classList.remove('hidden');
                 document.getElementById('blue-controls').classList.add('hidden');
+                const whiteControls = document.getElementById('white-controls');
+                if (whiteControls) whiteControls.classList.add('hidden');
                 renderAttackArsenal();
-            } else if (myTeam === 'blue' || myTeam === 'host') {
+            } else if (myTeam === 'blue') {
+                document.getElementById('blue-controls').classList.remove('hidden');
+                document.getElementById('red-controls').classList.add('hidden');
+                const whiteControls = document.getElementById('white-controls');
+                if (whiteControls) whiteControls.classList.add('hidden');
+                renderDefenseArsenal();
+            } else if (myTeam === 'white') {
+                document.getElementById('blue-controls').classList.add('hidden');
+                document.getElementById('red-controls').classList.add('hidden');
+                const whiteControls = document.getElementById('white-controls');
+                if (whiteControls) whiteControls.classList.remove('hidden');
+            } else if (myTeam === 'host') {
                 document.getElementById('blue-controls').classList.remove('hidden');
                 document.getElementById('red-controls').classList.add('hidden');
                 renderDefenseArsenal();
@@ -1105,6 +1127,15 @@ Blue Team: Defend against all vectors simultaneously.</div>
                             traffic.scrollTop = traffic.scrollHeight;
                         }
                     }
+
+                    if (myTeam === 'white') {
+                        const whiteTraffic = document.getElementById('white-traffic');
+                        const newTraffic = data.logs.join('\n');
+                        if (whiteTraffic && whiteTraffic.innerHTML !== newTraffic) {
+                            whiteTraffic.innerHTML = newTraffic;
+                            whiteTraffic.scrollTop = whiteTraffic.scrollHeight;
+                        }
+                    }
                     
                     if (myTeam === 'red' || myTeam === 'host') {
                         if (data.red_terminal_logs && data.red_terminal_logs.length > (window._redLogCount || 0)) {
@@ -1337,7 +1368,7 @@ async function createLobby() {
             currentLobbyId = data.lobby_id;
             myTeam = team;
             isHost = true;
-            showWaitingRoom(currentLobbyId, data.red_invite_code, data.blue_invite_code);
+            showWaitingRoom(currentLobbyId, data.red_invite_code, data.blue_invite_code, data.white_invite_code);
         } else {
             showError(data.error);
         }
@@ -1370,7 +1401,7 @@ async function joinLobby(role) {
             isHost = (role === 'leader');
             
             if (data.status === 'waiting') {
-                showWaitingRoom(currentLobbyId, data.red_code, data.blue_code);
+                showWaitingRoom(currentLobbyId, data.red_code, data.blue_code, data.white_code);
             } else if (data.status === 'active') {
                 socket.emit('join_game_room', {lobby_id: currentLobbyId, username: myTeam});
                 document.getElementById('lobby-modal').classList.add('hidden');
@@ -1877,4 +1908,61 @@ async function surrenderMatch() {
             body: JSON.stringify({ lobby_id: currentLobbyId, team: myTeam })
         });
     } catch(err) { console.error('Failed to surrender', err); }
+}
+// ─── GAMEMASTER FUNCTIONS ───
+
+async function injectNoise() {
+    if(!currentLobbyId) return;
+    try {
+        const res = await fetch('/api/game/admin/noise', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ lobby_id: currentLobbyId })
+        });
+        const data = await res.json();
+        if(data.success) {
+            console.log("Noise injected!");
+        } else {
+            alert(data.error);
+        }
+    } catch (err) { console.error("Failed to inject noise", err); }
+}
+
+async function toggleNetworkLatency(enable) {
+    if(!currentLobbyId) return;
+    try {
+        const res = await fetch('/api/game/admin/latency', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ lobby_id: currentLobbyId, enable: enable })
+        });
+        const data = await res.json();
+        if(data.success) {
+            console.log("Network latency updated!");
+        } else {
+            alert(data.error);
+        }
+    } catch (err) { console.error("Failed to set network latency", err); }
+}
+
+async function triggerHardwareEvent() {
+    if(!currentLobbyId) return;
+    try {
+        const res = await fetch('/api/game/admin/hardware_event', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ lobby_id: currentLobbyId, event_type: 'usb_drop' })
+        });
+        const data = await res.json();
+        if(data.success) {
+            console.log("Hardware event triggered!");
+        } else {
+            alert(data.error);
+        }
+    } catch (err) { console.error("Failed to trigger hardware event", err); }
+}
+
+function downloadPCAP() {
+    if(!currentLobbyId) return;
+    window.location.href = `/api/game/pcap?lobby_id=${currentLobbyId}`;
 }
