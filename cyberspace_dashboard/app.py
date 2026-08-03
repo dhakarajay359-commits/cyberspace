@@ -137,6 +137,10 @@ def init_db():
             difficulty_level INTEGER DEFAULT 1
         )
     ''')
+    try:
+        c.execute('ALTER TABLE lobbies ADD COLUMN target_url TEXT')
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS lobby_members (
             lobby_id TEXT NOT NULL,
