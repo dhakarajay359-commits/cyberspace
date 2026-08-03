@@ -145,6 +145,17 @@ def init_db():
         c.execute('ALTER TABLE lobbies ADD COLUMN white_invite_code TEXT')
     except sqlite3.OperationalError:
         pass
+    
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+        
+    # Create default admin if it doesn't exist
+    c.execute("SELECT id FROM users WHERE username = 'admin'")
+    if not c.fetchone():
+        c.execute("INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)", ('admin', generate_password_hash('admin123')))
+
     c.execute('''
         CREATE TABLE IF NOT EXISTS lobby_members (
             lobby_id TEXT NOT NULL,
@@ -163,6 +174,24 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login'))
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT is_admin FROM users WHERE username = ?", (session['user'],))
+        row = c.fetchone()
+        conn.close()
+        
+        if not row or not row[0]:
+            return redirect(url_for('dashboard'))
+            
         return f(*args, **kwargs)
     return decorated_function
 
@@ -348,6 +377,14 @@ def yt_search():
 @app.route('/')
 def home():
     if 'user' in session:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT is_admin FROM users WHERE username = ?", (session['user'],))
+        row = c.fetchone()
+        conn.close()
+        
+        if row and row[0]:
+            return redirect(url_for('admin_dashboard'))
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
@@ -358,6 +395,12 @@ def dashboard():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     try:
+        c.execute("SELECT is_admin FROM users WHERE username = ?", (session['user'],))
+        row = c.fetchone()
+        if row and row[0]:
+            conn.close()
+            return redirect(url_for('admin_dashboard'))
+            
         c.execute("SELECT wins, matches_played, total_score FROM users WHERE username = ?", (session['user'],))
         stats = c.fetchone()
     except Exception:
@@ -370,6 +413,24 @@ def dashboard():
         "total_score": stats[2] if stats else 0
     }
     return render_template('index.html', user_stats=user_stats)
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    return render_template('admin.html')
+
+@app.route('/api/admin/lobbies', methods=['GET'])
+@admin_required
+def get_admin_lobbies():
+    lobbies = []
+    for lobby_id, game in active_games.items():
+        lobbies.append({
+            "id": lobby_id,
+            "scenario": game.get("scenario"),
+            "status": game.get("status"),
+            "health": game.get("health")
+        })
+    return jsonify({"success": True, "lobbies": lobbies})
 
 
 @app.route('/academy')
@@ -584,13 +645,16 @@ def auth_login():
 
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+    c.execute("SELECT password_hash, is_admin FROM users WHERE username = ?", (username,))
     user = c.fetchone()
     conn.close()
 
     if user and check_password_hash(user[0], password):
         session['user'] = username
-        return jsonify({"success": True, "redirect": url_for('dashboard')})
+        is_admin = user[1]
+        
+        redirect_url = url_for('admin_dashboard') if is_admin else url_for('dashboard')
+        return jsonify({"success": True, "redirect": redirect_url})
 
     return jsonify({"success": False, "error": "Invalid username or password"})
 
@@ -1010,7 +1074,7 @@ def game_flag():
 # === GAMEMASTER (WHITE TEAM) ENDPOINTS ===
 
 @app.route('/api/game/inject_noise', methods=['POST'])
-@login_required
+@admin_required
 def inject_noise():
     data = request.json or {}
     lobby_id = data.get('lobby_id')
@@ -1036,7 +1100,7 @@ def inject_noise():
     return jsonify({"success": True})
 
 @app.route('/api/game/network_degrade', methods=['POST'])
-@login_required
+@admin_required
 def network_degrade():
     data = request.json or {}
     lobby_id = data.get('lobby_id')
@@ -1052,7 +1116,7 @@ def network_degrade():
     return jsonify({"success": True})
 
 @app.route('/api/game/hardware_event', methods=['POST'])
-@login_required
+@admin_required
 def hardware_event():
     data = request.json or {}
     lobby_id = data.get('lobby_id')
