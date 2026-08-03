@@ -151,10 +151,12 @@ def init_db():
     except sqlite3.OperationalError:
         pass
         
-    # Create default admin if it doesn't exist
+    # Create default admin if it doesn't exist, and ensure it has admin rights
     c.execute("SELECT id FROM users WHERE username = 'admin'")
     if not c.fetchone():
         c.execute("INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)", ('admin', generate_password_hash('admin123')))
+    else:
+        c.execute("UPDATE users SET is_admin = 1 WHERE username = 'admin'")
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS lobby_members (
