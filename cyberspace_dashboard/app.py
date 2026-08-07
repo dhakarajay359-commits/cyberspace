@@ -17,7 +17,6 @@ from flask import Flask, request, jsonify, render_template, Response, redirect, 
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from google import genai
 from google.genai import types
-import yt_dlp
 from docker_manager import spawn_target, teardown_target
 from scoring_engine import init_scoring_engine, submit_flag
 
@@ -73,38 +72,6 @@ init_scoring_engine(active_games, socketio)
 active_terminals = {}
 
 GEMINI_MODEL = "gemini-2.0-flash-lite"
-
-# ==========================================
-# YT-DLP / VIDEO STREAM CONFIGURATION
-# ==========================================
-class DummyLogger(object):
-    def debug(self, msg): pass
-    def warning(self, msg): pass
-    def error(self, msg): pass
-
-def get_yt_dlp_options():
-    """
-    Returns standard yt-dlp options configured with ffmpeg merging support,
-    cookie handling, and client impersonation to prevent YouTube bot blocking.
-    """
-    opts = {
-        'quiet': True,
-        'no_warnings': True,
-        'logger': DummyLogger(),
-        'format': 'bestvideo+bestaudio/best',
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['ios', 'android', 'web']
-            }
-        }
-    }
-    
-    # Pass cookies.txt if present in project directory
-    if os.path.exists('cookies.txt'):
-        opts['cookiefile'] = 'cookies.txt'
-        
-    return opts
-
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -297,83 +264,6 @@ def run_nessus_task(task_id, target):
         scan_tasks[task_id]["message"] = str(e)
 
 
-# ==========================================
-# YOUTUBE STREAM API ENDPOINT
-# ==========================================
-@app.route('/api/video/extract', methods=['POST'])
-@login_required
-def extract_video_stream():
-    data = request.json or {}
-    url = data.get('url', '').strip()
-
-    if not url:
-        return jsonify({"success": False, "error": "URL parameter required"}), 400
-
-    try:
-        ydl_opts = get_yt_dlp_options()
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            stream_url = info.get('url') or info.get('manifest_url')
-            
-            return jsonify({
-                "success": True,
-                "title": info.get('title'),
-                "stream_url": stream_url,
-                "duration": info.get('duration')
-            })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
-
-@app.route('/api/yt_stream/<video_id>', methods=['GET'])
-@login_required
-def yt_stream(video_id):
-    url = f"https://www.youtube.com/watch?v={video_id}"
-    try:
-        ydl_opts = get_yt_dlp_options()
-        ydl_opts['format'] = '18/best[ext=mp4]/best'
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            stream_url = info.get('url') or info.get('manifest_url')
-            
-            return jsonify({
-                "success": True,
-                "title": info.get('title'),
-                "url": stream_url,
-                "duration": info.get('duration')
-            })
-    except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        return jsonify({"success": False, "error": str(e), "traceback": tb})
-
-import requests
-
-def internal_youtube_search(query, max_results=10):
-    try:
-        ydl_opts = get_yt_dlp_options()
-        ydl_opts['extract_flat'] = True
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f'ytsearch{max_results}:{query}', download=False)
-            results = []
-            for entry in info.get('entries', []):
-                results.append({'id': entry.get('id'), 'title': entry.get('title')})
-            return results
-    except Exception as e:
-        print("Search Error:", e)
-        return []
-
-@app.route('/api/yt_search')
-@login_required
-def yt_search():
-    query = request.args.get('q', '')
-    if not query:
-        return jsonify([])
-        
-    try:
-        results = internal_youtube_search(query, max_results=10)
-        return jsonify(results)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route('/')
