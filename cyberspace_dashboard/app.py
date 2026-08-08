@@ -206,6 +206,35 @@ def init_db():
     for k, v in [('event_name', 'CTF 2026'), ('registration_open', '1')]:
         c.execute('INSERT OR IGNORE INTO ctf_settings (key, value) VALUES (?, ?)', (k, v))
 
+    # Seed demo CTF challenges if none exist
+    c.execute('SELECT COUNT(*) FROM ctf_challenges')
+    if c.fetchone()[0] == 0:
+        from werkzeug.security import generate_password_hash as _gph
+
+        c.execute("SELECT id FROM ctf_categories WHERE name='Web'"); web_id = (c.fetchone() or [None])[0]
+        c.execute("SELECT id FROM ctf_categories WHERE name='Crypto'"); cry_id = (c.fetchone() or [None])[0]
+        c.execute("SELECT id FROM ctf_categories WHERE name='Forensics'"); for_id = (c.fetchone() or [None])[0]
+        c.execute("SELECT id FROM ctf_categories WHERE name='Misc'"); misc_id = (c.fetchone() or [None])[0]
+        c.execute("SELECT id FROM ctf_categories WHERE name='OSINT'"); osi_id = (c.fetchone() or [None])[0]
+
+        seed_challenges = [
+            # (title, category_id, description, points, flag, difficulty)
+            ("SQL Injection 101",    web_id,  "A classic login form is vulnerable to SQL injection. Can you bypass it?\n\nTarget URL is provided above. Try to login as `admin` without knowing the password.\n\n**Hint:** Classic `' OR '1'='1` style.", 100, "flag{sql_bypass_master}", "easy"),
+            ("Cookie Monster",       web_id,  "The admin sets a suspicious cookie on login. Inspect it carefully — it looks like it might be base64 encoded.\n\n```\nGET /dashboard HTTP/1.1\nCookie: role=dXNlcg==\n```\nWhat value makes you admin?",          150, "flag{cookie_b64_admin}", "easy"),
+            ("XSS Playground",       web_id,  "There's a comment box on this site that reflects your input. Find an XSS payload that triggers `alert(1)` and grab the flag from the page source.",                                                       200, "flag{xss_reflected_win}", "medium"),
+            ("Caesar's Ghost",       cry_id,  "We intercepted a message from the enemy:\n\n```\nsynj{pnrfne_vf_qrnq}\n```\n\nDecrypt it. The shift used is 13.",                                                                                         100, "flag{caesar_is_dead}", "easy"),
+            ("Base64 Maze",          cry_id,  "The flag has been encoded multiple times. Start decoding here:\n\n```\nWm14aFp6cGtZV05sWVhOallYa2ZhWE5mWW1Gc1lYa2s=\n```\n\nKeep decoding until you find `flag{...}`.",                              200, "flag{base64_is_not_crypto}", "medium"),
+            ("Metadata Secrets",     for_id,  "A JPEG was found on the dark web. The flag is hidden in its EXIF metadata.\n\nRun `exiftool image.jpg` and look at the `Comment` field.",                                                                  150, "flag{exif_data_hunter}", "easy"),
+            ("Log Analysis",         misc_id, "You're given an Apache access log. Find the IP that made >1000 requests in 1 minute.\n\nThe flag is `flag{` + attacker_ip + `}`.\n\nLog sample:\n```\n192.168.1.105 - - [08/Aug/2026:12:00:01] GET / HTTP/1.1 200\n```", 250, "flag{192.168.1.105}", "medium"),
+            ("OSINT: Find the Flag", osi_id,  "A hacker left a clue on their public GitHub. Username: `ctf_test_user_2026`, repo: `hidden-flag`, look in the README.\n\n*(Simulation — the flag is in the description below)*",                           300, "flag{osint_github_stalker}", "hard"),
+        ]
+
+        for title, cat_id, desc, pts, flag, diff in seed_challenges:
+            c.execute('''INSERT OR IGNORE INTO ctf_challenges
+                         (title, category_id, description, points, flag_hash, difficulty, visible)
+                         VALUES (?, ?, ?, ?, ?, ?, 1)''',
+                      (title, cat_id, desc, pts, _gph(flag), diff))
+
     conn.commit()
     conn.close()
 
