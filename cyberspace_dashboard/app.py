@@ -1,4 +1,4 @@
-import re
+﻿import re
 import subprocess
 import uuid
 import threading
@@ -134,106 +134,6 @@ def init_db():
         )
     ''')
 
-    # ---- CTF Platform Tables ----
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS ctf_categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS ctf_challenges (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            category_id INTEGER REFERENCES ctf_categories(id) ON DELETE SET NULL,
-            description TEXT NOT NULL,
-            points INTEGER NOT NULL DEFAULT 100,
-            flag_hash TEXT NOT NULL,
-            difficulty TEXT DEFAULT 'medium',
-            link TEXT,
-            visible INTEGER NOT NULL DEFAULT 1,
-            requires INTEGER REFERENCES ctf_challenges(id) ON DELETE SET NULL,
-            created_at TEXT DEFAULT (datetime('now'))
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS ctf_hints (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            challenge_id INTEGER NOT NULL REFERENCES ctf_challenges(id) ON DELETE CASCADE,
-            text TEXT NOT NULL,
-            cost INTEGER NOT NULL DEFAULT 0,
-            order_index INTEGER NOT NULL DEFAULT 0
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS ctf_hint_reveals (
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            hint_id INTEGER NOT NULL REFERENCES ctf_hints(id) ON DELETE CASCADE,
-            revealed_at TEXT DEFAULT (datetime('now')),
-            PRIMARY KEY (user_id, hint_id)
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS ctf_solves (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            challenge_id INTEGER NOT NULL REFERENCES ctf_challenges(id) ON DELETE CASCADE,
-            awarded_points INTEGER,
-            solved_at TEXT DEFAULT (datetime('now')),
-            UNIQUE(user_id, challenge_id)
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS ctf_wrong_attempts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            challenge_id INTEGER NOT NULL REFERENCES ctf_challenges(id) ON DELETE CASCADE,
-            attempted_at TEXT DEFAULT (datetime('now'))
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS ctf_settings (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        )
-    ''')
-    # Seed default CTF categories if none exist
-    c.execute('SELECT COUNT(*) FROM ctf_categories')
-    if c.fetchone()[0] == 0:
-        for cat in ['Web', 'Crypto', 'Forensics', 'Pwn', 'Reverse Engineering', 'Misc', 'OSINT']:
-            c.execute('INSERT OR IGNORE INTO ctf_categories (name) VALUES (?)', (cat,))
-    # Seed default CTF settings
-    for k, v in [('event_name', 'CTF 2026'), ('registration_open', '1')]:
-        c.execute('INSERT OR IGNORE INTO ctf_settings (key, value) VALUES (?, ?)', (k, v))
-
-    # Seed demo CTF challenges if none exist
-    c.execute('SELECT COUNT(*) FROM ctf_challenges')
-    if c.fetchone()[0] == 0:
-        from werkzeug.security import generate_password_hash as _gph
-
-        c.execute("SELECT id FROM ctf_categories WHERE name='Web'"); web_id = (c.fetchone() or [None])[0]
-        c.execute("SELECT id FROM ctf_categories WHERE name='Crypto'"); cry_id = (c.fetchone() or [None])[0]
-        c.execute("SELECT id FROM ctf_categories WHERE name='Forensics'"); for_id = (c.fetchone() or [None])[0]
-        c.execute("SELECT id FROM ctf_categories WHERE name='Misc'"); misc_id = (c.fetchone() or [None])[0]
-        c.execute("SELECT id FROM ctf_categories WHERE name='OSINT'"); osi_id = (c.fetchone() or [None])[0]
-
-        seed_challenges = [
-            # (title, category_id, description, points, flag, difficulty)
-            ("SQL Injection 101",    web_id,  "A classic login form is vulnerable to SQL injection. Can you bypass it?\n\nTarget URL is provided above. Try to login as `admin` without knowing the password.\n\n**Hint:** Classic `' OR '1'='1` style.", 100, "flag{sql_bypass_master}", "easy"),
-            ("Cookie Monster",       web_id,  "The admin sets a suspicious cookie on login. Inspect it carefully — it looks like it might be base64 encoded.\n\n```\nGET /dashboard HTTP/1.1\nCookie: role=dXNlcg==\n```\nWhat value makes you admin?",          150, "flag{cookie_b64_admin}", "easy"),
-            ("XSS Playground",       web_id,  "There's a comment box on this site that reflects your input. Find an XSS payload that triggers `alert(1)` and grab the flag from the page source.",                                                       200, "flag{xss_reflected_win}", "medium"),
-            ("Caesar's Ghost",       cry_id,  "We intercepted a message from the enemy:\n\n```\nsynj{pnrfne_vf_qrnq}\n```\n\nDecrypt it. The shift used is 13.",                                                                                         100, "flag{caesar_is_dead}", "easy"),
-            ("Base64 Maze",          cry_id,  "The flag has been encoded multiple times. Start decoding here:\n\n```\nWm14aFp6cGtZV05sWVhOallYa2ZhWE5mWW1Gc1lYa2s=\n```\n\nKeep decoding until you find `flag{...}`.",                              200, "flag{base64_is_not_crypto}", "medium"),
-            ("Metadata Secrets",     for_id,  "A JPEG was found on the dark web. The flag is hidden in its EXIF metadata.\n\nRun `exiftool image.jpg` and look at the `Comment` field.",                                                                  150, "flag{exif_data_hunter}", "easy"),
-            ("Log Analysis",         misc_id, "You're given an Apache access log. Find the IP that made >1000 requests in 1 minute.\n\nThe flag is `flag{` + attacker_ip + `}`.\n\nLog sample:\n```\n192.168.1.105 - - [08/Aug/2026:12:00:01] GET / HTTP/1.1 200\n```", 250, "flag{192.168.1.105}", "medium"),
-            ("OSINT: Find the Flag", osi_id,  "A hacker left a clue on their public GitHub. Username: `ctf_test_user_2026`, repo: `hidden-flag`, look in the README.\n\n*(Simulation — the flag is in the description below)*",                           300, "flag{osint_github_stalker}", "hard"),
-        ]
-
-        for title, cat_id, desc, pts, flag, diff in seed_challenges:
-            c.execute('''INSERT OR IGNORE INTO ctf_challenges
-                         (title, category_id, description, points, flag_hash, difficulty, visible)
-                         VALUES (?, ?, ?, ?, ?, ?, 1)''',
-                      (title, cat_id, desc, pts, _gph(flag), diff))
 
     conn.commit()
     conn.close()
@@ -455,345 +355,9 @@ def compete():
     return render_template('compete.html')
 
 
-@app.route('/ctf')
-@login_required
-def ctf():
-    return render_template('ctf.html', active_page='ctf')
 
 
-@app.route('/ctf/scoreboard')
-@login_required
-def ctf_scoreboard():
-    return render_template('ctf_scoreboard.html', active_page='ctf')
 
-
-# ── CTF API: Challenges ──────────────────────────────────────────────────────
-
-@app.route('/api/ctf/challenges')
-@login_required
-def ctf_get_challenges():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''
-        SELECT ch.id, ch.title, ch.description, ch.points, ch.difficulty,
-               ch.link, ch.requires, ch.visible,
-               cat.id AS category_id, cat.name AS category
-        FROM ctf_challenges ch
-        LEFT JOIN ctf_categories cat ON cat.id = ch.category_id
-        WHERE ch.visible = 1
-        ORDER BY cat.name, ch.points ASC
-    ''')
-    cols = [d[0] for d in c.description]
-    challenges = [dict(zip(cols, row)) for row in c.fetchall()]
-
-    c.execute('SELECT id FROM users WHERE username = ?', (session['user'],))
-    user_row = c.fetchone()
-    user_id = user_row[0] if user_row else None
-
-    solved_ids = set()
-    revealed_hint_ids = set()
-    if user_id:
-        c.execute('SELECT challenge_id FROM ctf_solves WHERE user_id = ?', (user_id,))
-        solved_ids = {r[0] for r in c.fetchall()}
-        c.execute('SELECT hint_id FROM ctf_hint_reveals WHERE user_id = ?', (user_id,))
-        revealed_hint_ids = {r[0] for r in c.fetchall()}
-
-    c.execute('SELECT * FROM ctf_hints ORDER BY order_index ASC')
-    hint_cols = [d[0] for d in c.description]
-    all_hints = [dict(zip(hint_cols, row)) for row in c.fetchall()]
-    conn.close()
-
-    result = []
-    for ch in challenges:
-        hints = [
-            {'id': h['id'], 'cost': h['cost'],
-             'revealed': h['id'] in revealed_hint_ids,
-             'text': h['text'] if h['id'] in revealed_hint_ids else None}
-            for h in all_hints if h['challenge_id'] == ch['id']
-        ]
-        ch['solved'] = ch['id'] in solved_ids
-        ch['hints'] = hints
-        result.append(ch)
-
-    return jsonify(result)
-
-
-@app.route('/api/ctf/challenges/<int:challenge_id>/submit', methods=['POST'])
-@login_required
-def ctf_submit_flag(challenge_id):
-    from werkzeug.security import check_password_hash
-    data = request.json or {}
-    flag = (data.get('flag') or '').strip()
-
-    import re
-    if not re.match(r'^(flag|FLAG)\{.*\}$', flag):
-        return jsonify({'error': 'Invalid format. Flag must match flag{...}'}), 400
-
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT id FROM users WHERE username = ?', (session['user'],))
-    user_row = c.fetchone()
-    if not user_row:
-        conn.close()
-        return jsonify({'error': 'User not found'}), 404
-    user_id = user_row[0]
-
-    c.execute('SELECT * FROM ctf_challenges WHERE id = ? AND visible = 1', (challenge_id,))
-    chal = c.fetchone()
-    if not chal:
-        conn.close()
-        return jsonify({'error': 'Challenge not found'}), 404
-
-    chal_cols = [d[0] for d in c.description]
-    chal = dict(zip(chal_cols, chal))
-
-    c.execute('SELECT 1 FROM ctf_solves WHERE user_id = ? AND challenge_id = ?', (user_id, challenge_id))
-    if c.fetchone():
-        conn.close()
-        return jsonify({'error': 'Already solved'}), 409
-
-    if chal['requires']:
-        c.execute('SELECT 1 FROM ctf_solves WHERE user_id = ? AND challenge_id = ?', (user_id, chal['requires']))
-        if not c.fetchone():
-            conn.close()
-            return jsonify({'error': 'Prerequisite challenge not solved yet'}), 403
-
-    correct = check_password_hash(chal['flag_hash'], flag)
-    if not correct:
-        c.execute('INSERT INTO ctf_wrong_attempts (user_id, challenge_id) VALUES (?, ?)', (user_id, challenge_id))
-        conn.commit()
-        conn.close()
-        return jsonify({'correct': False})
-
-    # Dynamic scoring decay: 5% per solve, min 20%
-    c.execute('SELECT COUNT(*) FROM ctf_solves WHERE challenge_id = ?', (challenge_id,))
-    solve_count = c.fetchone()[0]
-    decay = max(0.2, 1 - (solve_count * 0.05))
-    awarded = int(chal['points'] * decay)
-    if solve_count == 0:
-        awarded += 50  # first blood bonus
-
-    c.execute('INSERT INTO ctf_solves (user_id, challenge_id, awarded_points) VALUES (?, ?, ?)',
-              (user_id, challenge_id, awarded))
-    conn.commit()
-    conn.close()
-
-    return jsonify({'correct': True, 'points': awarded})
-
-
-@app.route('/api/ctf/hints/<int:hint_id>/reveal', methods=['POST'])
-@login_required
-def ctf_reveal_hint(hint_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT id FROM users WHERE username = ?', (session['user'],))
-    user_row = c.fetchone()
-    if not user_row:
-        conn.close()
-        return jsonify({'error': 'User not found'}), 404
-    user_id = user_row[0]
-
-    c.execute('SELECT * FROM ctf_hints WHERE id = ?', (hint_id,))
-    hint_cols = [d[0] for d in c.description]
-    hint = c.fetchone()
-    if not hint:
-        conn.close()
-        return jsonify({'error': 'Hint not found'}), 404
-    hint = dict(zip(hint_cols, hint))
-
-    c.execute('SELECT 1 FROM ctf_hint_reveals WHERE user_id = ? AND hint_id = ?', (user_id, hint_id))
-    if not c.fetchone():
-        c.execute('INSERT INTO ctf_hint_reveals (user_id, hint_id) VALUES (?, ?)', (user_id, hint_id))
-        conn.commit()
-    conn.close()
-    return jsonify({'text': hint['text']})
-
-
-@app.route('/api/ctf/scoreboard')
-@login_required
-def ctf_get_scoreboard():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''
-        SELECT u.username,
-               COALESCE(SUM(s.awarded_points), 0) AS score,
-               COUNT(s.id) AS solves,
-               MAX(s.solved_at) AS last_solve
-        FROM users u
-        LEFT JOIN ctf_solves s ON s.user_id = u.id
-        WHERE u.is_admin IS NULL OR u.is_admin = 0
-        GROUP BY u.id
-        HAVING score > 0
-        ORDER BY score DESC, last_solve ASC
-        LIMIT 50
-    ''')
-    cols = [d[0] for d in c.description]
-    board = [dict(zip(cols, row)) for row in c.fetchall()]
-    conn.close()
-    return jsonify(board)
-
-
-# ── CTF API: Admin ───────────────────────────────────────────────────────────
-
-@app.route('/api/ctf/admin/categories', methods=['GET'])
-@login_required
-def ctf_admin_get_categories():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT id, name FROM ctf_categories ORDER BY name')
-    cats = [{'id': r[0], 'name': r[1]} for r in c.fetchall()]
-    conn.close()
-    return jsonify(cats)
-
-
-@app.route('/api/ctf/admin/categories', methods=['POST'])
-@login_required
-def ctf_admin_add_category():
-    data = request.json or {}
-    name = (data.get('name') or '').strip()
-    if not name:
-        return jsonify({'error': 'Name required'}), 400
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    try:
-        c.execute('INSERT INTO ctf_categories (name) VALUES (?)', (name,))
-        conn.commit()
-        cat_id = c.lastrowid
-        conn.close()
-        return jsonify({'id': cat_id, 'name': name})
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({'error': 'Category already exists'}), 409
-
-
-@app.route('/api/ctf/admin/categories/<int:cat_id>', methods=['DELETE'])
-@login_required
-def ctf_admin_delete_category(cat_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('DELETE FROM ctf_categories WHERE id = ?', (cat_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'ok': True})
-
-
-@app.route('/api/ctf/admin/challenges', methods=['GET'])
-@login_required
-def ctf_admin_get_challenges():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''
-        SELECT ch.id, ch.title, ch.points, ch.difficulty, ch.visible,
-               ch.link, ch.requires, ch.description, ch.category_id,
-               cat.name AS category
-        FROM ctf_challenges ch
-        LEFT JOIN ctf_categories cat ON cat.id = ch.category_id
-        ORDER BY ch.created_at DESC
-    ''')
-    cols = [d[0] for d in c.description]
-    challenges = [dict(zip(cols, row)) for row in c.fetchall()]
-    c.execute('SELECT * FROM ctf_hints ORDER BY order_index ASC')
-    hint_cols = [d[0] for d in c.description]
-    all_hints = [dict(zip(hint_cols, row)) for row in c.fetchall()]
-    c.execute('SELECT challenge_id, COUNT(*) AS n FROM ctf_solves GROUP BY challenge_id')
-    solve_counts = {r[0]: r[1] for r in c.fetchall()}
-    conn.close()
-    for ch in challenges:
-        ch['hints'] = [h for h in all_hints if h['challenge_id'] == ch['id']]
-        ch['solveCount'] = solve_counts.get(ch['id'], 0)
-    return jsonify(challenges)
-
-
-@app.route('/api/ctf/admin/challenges', methods=['POST'])
-@login_required
-def ctf_admin_add_challenge():
-    from werkzeug.security import generate_password_hash
-    data = request.json or {}
-    title = (data.get('title') or '').strip()
-    description = (data.get('description') or '').strip()
-    flag = (data.get('flag') or '').strip()
-    points = data.get('points', 100)
-    category_id = data.get('categoryId') or None
-    difficulty = data.get('difficulty', 'medium')
-    link = (data.get('link') or '').strip() or None
-    visible = 1 if data.get('visible', True) else 0
-    requires = data.get('requires') or None
-    hints = data.get('hints', [])
-
-    if not title or not description or not flag:
-        return jsonify({'error': 'Title, description, and flag are required'}), 400
-
-    flag_hash = generate_password_hash(flag)
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''INSERT INTO ctf_challenges
-        (title, category_id, description, points, flag_hash, difficulty, link, visible, requires)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-        (title, category_id, description, int(points), flag_hash, difficulty, link, visible, requires))
-    challenge_id = c.lastrowid
-    for i, h in enumerate(hints):
-        if h.get('text', '').strip():
-            c.execute('INSERT INTO ctf_hints (challenge_id, text, cost, order_index) VALUES (?, ?, ?, ?)',
-                      (challenge_id, h['text'].strip(), int(h.get('cost', 0)), i))
-    conn.commit()
-    conn.close()
-    return jsonify({'id': challenge_id})
-
-
-@app.route('/api/ctf/admin/challenges/<int:challenge_id>', methods=['PUT'])
-@login_required
-def ctf_admin_update_challenge(challenge_id):
-    from werkzeug.security import generate_password_hash
-    data = request.json or {}
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT * FROM ctf_challenges WHERE id = ?', (challenge_id,))
-    row = c.fetchone()
-    if not row:
-        conn.close()
-        return jsonify({'error': 'Not found'}), 404
-    cols = [d[0] for d in c.description]
-    existing = dict(zip(cols, row))
-
-    flag = (data.get('flag') or '').strip()
-    flag_hash = generate_password_hash(flag) if flag else existing['flag_hash']
-    visible = 1 if data.get('visible', True) else 0
-
-    c.execute('''UPDATE ctf_challenges SET
-        title=?, category_id=?, description=?, points=?,
-        flag_hash=?, difficulty=?, link=?, visible=?, requires=?
-        WHERE id=?''',
-        (data.get('title', existing['title']),
-         data.get('categoryId', existing['category_id']),
-         data.get('description', existing['description']),
-         int(data.get('points', existing['points'])),
-         flag_hash,
-         data.get('difficulty', existing['difficulty']),
-         data.get('link', existing['link']),
-         visible,
-         data.get('requires') or None,
-         challenge_id))
-
-    # Sync hints: delete old, re-insert
-    c.execute('DELETE FROM ctf_hints WHERE challenge_id = ?', (challenge_id,))
-    for i, h in enumerate(data.get('hints', [])):
-        if h.get('text', '').strip():
-            c.execute('INSERT INTO ctf_hints (challenge_id, text, cost, order_index) VALUES (?, ?, ?, ?)',
-                      (challenge_id, h['text'].strip(), int(h.get('cost', 0)), i))
-    conn.commit()
-    conn.close()
-    return jsonify({'ok': True})
-
-
-@app.route('/api/ctf/admin/challenges/<int:challenge_id>', methods=['DELETE'])
-@login_required
-def ctf_admin_delete_challenge(challenge_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('DELETE FROM ctf_challenges WHERE id = ?', (challenge_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'ok': True})
 
 
 @app.route('/api/lobby/create', methods=['POST'])
@@ -1619,7 +1183,7 @@ def badge(domain):
     </svg>'''
     return Response(svg, mimetype='image/svg+xml')
 
-# â”€â”€ Batch 2 & 3: Web Auditors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼ Batch 2 & 3: Web Auditors â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼
 
 @app.route('/api/audit/waf', methods=['POST'])
 def audit_waf():
@@ -1670,7 +1234,7 @@ def audit_security_txt():
         return jsonify({'error': 'Missing domain'}), 400
     return jsonify(check_security_txt(domain))
 
-# â”€â”€ Batch 4: AI & Advanced Auditors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼ Batch 4: AI & Advanced Auditors â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼
 
 @app.route('/api/audit/prompt-injection', methods=['POST'])
 def audit_prompt_injection():
@@ -1695,7 +1259,7 @@ def audit_asvs():
     arch = (request.json or {}).get('arch', 'general')
     return jsonify(get_asvs_checklist(arch))
 
-# â”€â”€ Final 5 Specialized Auditors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼ Final 5 Specialized Auditors â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼
 
 @app.route('/api/audit/directory', methods=['POST'])
 def audit_directory():
@@ -1736,7 +1300,7 @@ def audit_sbom():
         return jsonify({'error': 'Missing content'}), 400
     return jsonify(generate_sbom(content, manifest_type))
 
-# â”€â”€ IP Port Scanner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼ IP Port Scanner â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼
 
 def run_ip_scan_task(task_id, ip, port_range, scan_type):
     """Background task: scan an IP address for open ports using Nmap."""
@@ -1805,7 +1369,7 @@ def scan_by_ip():
     thread.start()
     return jsonify({'task_id': task_id, 'status': 'running'})
 
-# â”€â”€ Enterprise 5 Features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼ Enterprise 5 Features â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼
 
 @app.route('/api/audit/smuggling', methods=['POST'])
 def audit_smuggling():
@@ -1844,7 +1408,7 @@ def audit_iac():
         return jsonify({'error': 'Missing content'}), 400
     return jsonify(harden_iac(content))
 
-# â”€â”€ Advanced 5 Features (Quick Auditors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼ Advanced 5 Features (Quick Auditors) â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼
 
 @app.route('/api/audit/prototype-pollution', methods=['POST'])
 def audit_prototype_pollution_route():
@@ -1883,7 +1447,7 @@ def csp_report_ingest():
     # Dummy ingest endpoint
     return jsonify({"status": "received"}), 200
 
-# â”€â”€ Cloud & AppSec Features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼ Cloud & AppSec Features â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼â”œÃ³Î“Ã‡Â¥Î“Ã©Â¼
 
 @app.route('/api/audit/xxe', methods=['POST'])
 def audit_xxe_route():
