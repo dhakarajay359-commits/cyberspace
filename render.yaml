@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: cyberspace-dashboard
+    env: python
+    rootDir: cyberspace_dashboard
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: CTF_URL
+        value: https://cyberspace-ctf-engine.onrender.com
+  - type: web
+    name: cyberspace-ctf-engine
+    env: node
+    rootDir: cyberspace_dashboard/ctf_engine
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
