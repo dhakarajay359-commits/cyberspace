@@ -353,6 +353,13 @@ def compete():
     return render_template('compete.html')
 
 
+@app.route('/ctf_platform')
+@login_required
+def ctf_platform():
+    ctf_url = os.environ.get('CTF_URL', 'http://localhost:3000')
+    return render_template('ctf.html', ctf_url=ctf_url)
+
+
 @app.route('/api/lobby/create', methods=['POST'])
 @login_required
 def create_lobby():
